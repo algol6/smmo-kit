@@ -1,8 +1,11 @@
 __pycache__/
+
 data/Database.db
 temp/
-# Logs:
+
 log/
 *.log
-# Environments
+
 .venv
+
+.evn
