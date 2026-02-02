@@ -55,9 +55,10 @@ class AdminTask(Cog):
         data = await Database.select_all_gains_leaderboard()
         for d in data:
             emb = helpers.Embed(title="Loading leaderboard...")
-            message = await helpers.get_channel_and_send(self.client,d.channel_id,embed=emb)
+            message = await helpers.get_channel_and_edit(self.client,d.channel_id,embed=emb)
             if not message:
                 continue
+            await Database.insert_gains_leaderboard(d.channel_id,message.id)
 
     @loop(minutes=10.0)
     async def update_gains_lb(self):
@@ -66,7 +67,7 @@ class AdminTask(Cog):
             return
         data = await Database.select_all_gains_leaderboard()
         for d in data:
-            if not await helpers.get_channel_and_send(self.client,d.channel_id,d.message_id,embed=emb):
+            if not await helpers.get_channel_and_edit(self.client,d.channel_id,d.message_id,embed=emb):
                 logger.info("Removing a gains lb cause: channel not found: %s",d.channel_id)
                 await Database.delete_gains_leaderboard(d.channel_id)
             
@@ -74,7 +75,7 @@ class AdminTask(Cog):
     @loop(time=time(hour=11, minute=59))
     async def create_new_daily_leaderboard(self):
         await self.update_leaderboards(False)
-        await sleep(120)
+        await sleep(120) # to have the date to the next day for helpers.get_current_date_game()
         data = await Database.select_all_lb()
         for d in data:
             try:
@@ -105,7 +106,7 @@ class AdminTask(Cog):
             if not emb:
                 logger.warning("Could not make the embed for the guild %s",d.guild_id)
                 continue
-            if not await helpers.get_channel_and_send(self.client,d.channel_id,d.message_id,embed=emb):
+            if not await helpers.get_channel_and_edit(self.client,d.channel_id,d.message_id,embed=emb):
                 logger.info("Removing a member lb cause: channel not found: %s",d.channel_id)
                 await Database.delete_lb(d.channel_id)
 
@@ -142,9 +143,9 @@ class AdminTask(Cog):
         for v in valutmsg:
             if v.status == 1:
                 continue
-            await helpers.get_channel_and_send(self.client,v.channel_id,embed=emb)
+            await helpers.get_channel_and_edit(self.client,v.channel_id,embed=emb)
             if v.role_id is not None:
-                await helpers.get_channel_and_send(self.client,v.channel_id,content=f"<@&{v.role_id}> Here the Vault Code!")
+                await helpers.get_channel_and_edit(self.client,v.channel_id,content=f"<@&{v.role_id}> Here the Vault Code!")
             await Database.update_valutmsg(1, v.channel_id)
 
     @loop(time=time(hour=12))
@@ -159,7 +160,7 @@ class AdminTask(Cog):
             return
         pings = await Database.select_monthly_reward()
         for ping in pings:
-            await helpers.get_channel_and_send(self.client,channel_id=ping.channel_id,content=f"<@&{ping.role_id}> time to get monthly reward!\nGo to Town > Mahols Hut > Monthly Reward, to reedem it.")
+            await helpers.get_channel_and_edit(self.client,channel_id=ping.channel_id,content=f"<@&{ping.role_id}> time to get monthly reward!\nGo to Town > Mahols Hut > Monthly Reward, to reedem it.")
 
     @loop(minutes=30)
     async def activity_check(self):
