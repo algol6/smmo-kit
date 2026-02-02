@@ -46,7 +46,7 @@ class DiamondsTasks(Cog):
                 continue
             await Database.update_diamonds(market_data.listing_created, dias.channel_id)
 
-            await helpers.get_channel_and_send(self.client,dias.channel_id,
+            await helpers.get_channel_and_edit(self.client,dias.channel_id,
                                                content= f"<@&{dias.role_id}> {market_data.seller.name} "
                                                         f"is selling {market_data.diamond_amount_at_start} diamonds "
                                                         f"for {market_data.price_per_diamond:,} :coin: [{int(market_data.price_per_diamond*1.025):,} :bank:] gold each.\n"
