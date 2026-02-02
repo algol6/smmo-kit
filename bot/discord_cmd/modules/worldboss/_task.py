@@ -62,7 +62,7 @@ class WorldbossTasks(Cog):
             if d.boss_id == wb_data.id:
                 continue
             
-            await helpers.get_channel_and_send(self.client,d.channel_id,delete_after=int(wb_data.enable_time - int(datetime.now().timestamp()) + 120), view=WorldbossUrlButton())
+            await helpers.get_channel_and_edit(self.client,d.channel_id,delete_after=int(wb_data.enable_time - int(datetime.now().timestamp()) + 120), view=WorldbossUrlButton())
             await Database.update_wb_message(channel_id=d.channel_id, boss_id=wb_data.id)
             
 
@@ -74,7 +74,7 @@ class WorldbossTasks(Cog):
             if wb.enable_time <= datetime.now().timestamp() + d.seconds_before:
                 await Database.update_wb_notification(d.channel_id, wb.id,d.seconds_before)
                 if d.god == 1 and wb.god:
-                    await helpers.get_channel_and_send(self.client,d.channel_id,content=f"<@&{d.role_id}> world boss **{wb.name}** in about <t:{wb.enable_time}:R>", delete_after=(d.seconds_before+60))
+                    await helpers.get_channel_and_edit(self.client,d.channel_id,content=f"<@&{d.role_id}> world boss **{wb.name}** in about <t:{wb.enable_time}:R>", delete_after=(d.seconds_before+60))
                     continue
-                await helpers.get_channel_and_send(self.client,d.channel_id,content=f"<@&{d.role_id}> world boss **{wb.name}** in about <t:{wb.enable_time}:R>", delete_after=(d.seconds_before+60))
+                await helpers.get_channel_and_edit(self.client,d.channel_id,content=f"<@&{d.role_id}> world boss **{wb.name}** in about <t:{wb.enable_time}:R>", delete_after=(d.seconds_before+60))
               
