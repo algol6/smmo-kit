@@ -63,7 +63,7 @@ class GuildTask(Cog):
             if raid.time + raid.duration*3600 >= time:
                 continue
 
-            await helpers.get_channel_and_send(self.client,raid.channel_id,content=f"<@&{raid.role_id}> {raid.duration}h raid ended.")
+            await helpers.get_channel_and_edit(self.client,raid.channel_id,content=f"<@&{raid.role_id}> {raid.duration}h raid ended.")
             await Database.delete_raid(raid.channel_id)
 
 def setup(client:Bot):
