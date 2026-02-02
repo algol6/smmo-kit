@@ -1,0 +1,1 @@
+from ._diamond import setup
