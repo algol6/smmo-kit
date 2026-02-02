@@ -4,7 +4,7 @@ if __name__ == '__main__':
 
     venv_path = 'VENV_PATH'
 
-    second_script_path = r"SCRIPT_PATH"
+    second_script_path = r"SCRIPT_PATH" # path to main.py
 
     command = [
         os.path.join(venv_path, 'Scripts', 'python.exe'),  
