@@ -1,5 +1,6 @@
 __pycache__/
 
+bot/database/_db.py
 data/Database.db
 temp/
 
@@ -11,3 +12,5 @@ log/
 .env
 
 todo
+
+run.py
