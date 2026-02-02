@@ -16,7 +16,7 @@ class CommandGroups(commands.Cog):
 
     group_guild = SlashCommandGroup(name="guild", description="Guilds commands")
     requirements_subgroup = group_guild.create_subgroup("requirement")
-    members_subgroup = group_guild.create_subgroup("mbs")
+    members_subgroup = group_guild.create_subgroup("members")
 
     group_wb = SlashCommandGroup(name="worldboss", description="worldboss commands")
     set_subgroup = group_wb.create_subgroup("set")
