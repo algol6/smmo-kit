@@ -18,6 +18,16 @@ class Extra(Cog):
     @command_utils.auto_defer()
     @command_utils.statistics("/bot stats")
     @command_utils.took_too_long()
+    async def source(self,ctx:ApplicationContext):
+        emb = helpers.Embed(title="SMMO-kit Source")
+        emb.add_field(name="", value="Source can be found on GitHub: https://github.com/algol6/smmo-kit")
+        await helpers.send(ctx,embed=emb)
+
+    @subcommand("bot")
+    @slash_command(description="Show the bot commands stats")
+    @command_utils.auto_defer()
+    @command_utils.statistics("/bot stats")
+    @command_utils.took_too_long()
     async def stats(self,ctx:ApplicationContext):
         is_empty,data = helpers.gen_is_empty(await Database.select_statistics())
         if is_empty:
