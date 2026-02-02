@@ -172,7 +172,7 @@ class SMMOApi:
         if api_key is None:
             resp = await SMMOApi._request(f"v1/guilds/members/{guild_id}/contribution/{user_id}")
         else:
-            resp = await SMMOApi._request2(f"v1/guilds/members/{guild_id}/contribution/{user_id}", api_key)
+            resp = await SMMOApi._request(f"v1/guilds/members/{guild_id}/contribution/{user_id}", api_key)
         if resp is not None:
             return model.GuildMemberContribution(**resp)
 
