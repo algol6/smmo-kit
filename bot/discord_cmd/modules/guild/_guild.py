@@ -130,7 +130,7 @@ class Guild(Cog):
     @command_utils.auto_defer(False)
     @command_utils.statistics("/guild members")
     @command_utils.took_too_long()
-    async def members(self,ctx:ApplicationContext) -> None:
+    async def members_list(self,ctx:ApplicationContext) -> None:
         guild_member = await SMMOApi.get_guild_members(ctx.user_guild_id)
         guild_info = await SMMOApi.get_guild_info(ctx.user_guild_id)
         x:list[str] = []
@@ -286,7 +286,7 @@ class Guild(Cog):
         return await gains_view.send(ctx)
     
 
-    @subcommand("guild mbs")
+    @subcommand("guild members")
     @slash_command(description="Show guild stepping members")
     @guild_only()
     @option(name="who", choices=["Current","All"])
@@ -352,7 +352,7 @@ class Guild(Cog):
         await message.edit(embed=embed)
 
 
-    @subcommand("guild mbs")
+    @subcommand("guild members")
     @slash_command(description="Show top 5 members stats for each category(lvl,steps,npc,pvp)")
     @guild_only()
     @option(name="timeframe", choices=["Daily","Past 7 Days","In-Game Weekly","Yesterday","Monthly","In-Game Monthly"])
@@ -422,7 +422,7 @@ class Guild(Cog):
         await helpers.send(ctx,embed=emb)
 
 
-    @subcommand("guild mbs")
+    @subcommand("guild members")
     @slash_command(description="Show the stats of the guild")
     @permissions.require_linked_server()
     @guild_only()
