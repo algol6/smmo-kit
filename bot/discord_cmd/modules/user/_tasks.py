@@ -36,7 +36,7 @@ class UsersTask(Cog):
             for user in guild:
                 if user is None or user.user_id in banned:
                     continue
-                players_info[str(user.user_id)] = user
+                players_info[str(user.user_id)] = user.name
                 if not await Database.insert_user_stat(user.user_id,date.year,date.month,date.day,date_timestamp,user.level,user.steps,user.npc_kills,user.user_kills,-1,-1,0,-1):
                     logger.warning("Error while saving user from guild_members of season lb: %s",user)
                 ids.add(user.user_id)
@@ -53,7 +53,7 @@ class UsersTask(Cog):
             for user in member_guild:
                 if user.user_id in ids or user.user_id in banned:
                     continue
-                players_info[str(user.user_id)] = user
+                players_info[str(user.user_id)] = user.name
                 # player = await SMMOApi.get_player_info(user.user_id)
                 # if player is not None:
                 #     await Database.insert_user_stat(player)
@@ -128,18 +128,21 @@ class UsersTask(Cog):
 
             for _, row in best_df.iterrows():
                 sid = row['smmo_id']
-                
+                print(sid)
                 await Database.delete_best(sid, label)
-                await Database.insert_best(
-                    sid, 
-                    players_info[str(sid)],
-                    label, 
-                    row['date'], 
-                    row['daily_level'], 
-                    row['daily_steps'], 
-                    row['daily_npc'], 
-                    row['daily_user_kills']
-                )
+                try:
+                    await Database.insert_best(
+                        sid, 
+                        players_info[str(sid)],
+                        label, 
+                        row['date'], 
+                        row['daily_level'], 
+                        row['daily_steps'], 
+                        row['daily_npc'], 
+                        row['daily_user_kills']
+                    )
+                except KeyError:
+                    logger.warning("Error when updating best stats of user: %s",str(sid))
         logger.info("Repopulating Best stats. done.")
 
     
