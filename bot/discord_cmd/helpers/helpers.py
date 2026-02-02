@@ -291,7 +291,7 @@ async def make_gains_emb():
     emb.set_footer(text="Updated every 10 min")
     return emb
 
-async def get_channel_and_send(client:Bot,channel_id:int,message_id:int=None,content=None,embed=None,view=None,delete_after=None)->bool:
+async def get_channel_and_edit(client:Bot,channel_id:int,message_id:int=None,content=None,embed=None,view=None,delete_after=None):
     try:
         channel = await client.fetch_channel(channel_id)
         if not message_id:
@@ -300,7 +300,7 @@ async def get_channel_and_send(client:Bot,channel_id:int,message_id:int=None,con
         await message.edit(content=content,embed=embed)
         if delete_after is not None:
             await Database.insert_delmsg(message.id,channel.id,delete_after)
-        return True
+        return message
     except NotFound:
         logger.warning("Channel Id Invalid")
         return False
