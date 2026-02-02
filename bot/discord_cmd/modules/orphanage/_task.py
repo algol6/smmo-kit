@@ -29,7 +29,7 @@ class OrphanageTask(commands.Cog):
                 if notification_config.tier != int(tier):
                     continue
                 if notification_config.active != 1 and tier_data.is_active:
-                    await helpers.get_channel_and_send(self.client,notification_config.channel_id,content=f"<@&{notification_config.role_id}>\nOrphanage **tier {tier}** is now active.\nExpire in <t:{int(datetime.fromisoformat(tier_data.goal_reached_at).timestamp())+7200}:R>\n{"\n".join(tier_data.effects)}", delete_after=(abs(int(datetime.fromisoformat(tier_data.goal_reached_at).timestamp())+7200-datetime.now().timestamp())))
+                    await helpers.get_channel_and_edit(self.client,notification_config.channel_id,content=f"<@&{notification_config.role_id}>\nOrphanage **tier {tier}** is now active.\nExpire in <t:{int(datetime.fromisoformat(tier_data.goal_reached_at).timestamp())+7200}:R>\n{"\n".join(tier_data.effects)}", delete_after=(abs(int(datetime.fromisoformat(tier_data.goal_reached_at).timestamp())+7200-datetime.now().timestamp())))
                 if not await Database.update_orphanage(notification_config.channel_id,notification_config.tier,int(tier_data.is_active)):
                         logger.warning("Couldn't update orphanage status")
         
