@@ -14,7 +14,7 @@ class Extra(Cog):
         self.client = client
 
     @subcommand("bot")
-    @slash_command(description="Show the bot commands stats")
+    @slash_command(description="Link to the bot GitHub page")
     @command_utils.auto_defer()
     @command_utils.statistics("/bot stats")
     @command_utils.took_too_long()
@@ -61,7 +61,7 @@ class Extra(Cog):
         emb.add_field(name="Guild Linked", value=f"`{await Database.select_counter_guild_linked()}`", inline=True)
         emb.add_field(name="Servers", value=f"`{len(self.client.guilds)}`", inline=True)
         emb.add_field(name="Developer's discord", value="`algol6`", inline=True)
-        emb.add_field(name="Bot Version", value=f"`v2.0.0b`", inline=True)
+        emb.add_field(name="Bot Version", value=f"`v2.0.0`", inline=True)
         emb.set_footer(text="Praise to DPS!")
         await helpers.send(ctx,embed=emb)
 
