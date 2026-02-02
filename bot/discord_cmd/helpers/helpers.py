@@ -341,6 +341,8 @@ async def edit(ctx,content:str=None,embed:Embed=None)->None:
         logger.exception("Internet fault not mine")
     except ValueError:
         logger.exception("Text in the embed too long")
+    except NotFound:
+        logger.exception("Not found: where i send the message?")
         
 
 def get_date_game(tf:str) -> datetime:
