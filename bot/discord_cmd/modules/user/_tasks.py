@@ -9,7 +9,6 @@ from bot.api import SMMOApi
 from bot.database import Database
 from itertools import chain
 
-
 class UsersTask(Cog):
     def __init__(self, client):
         self.client = client
@@ -113,36 +112,29 @@ class UsersTask(Cog):
         all_data['daily_steps'] = all_data['daily_steps'].fillna(0)
         all_data['daily_user_kills'] = all_data['daily_user_kills'].fillna(0)
         all_data['daily_level'] = all_data['daily_level'].fillna(0)
-
-
-        cat = {
-            "STEP":all_data.groupby('smmo_id')['daily_steps'].idxmax(),
-            "NPC":all_data.groupby('smmo_id')['daily_npc'].idxmax(),
-            "PVP":all_data.groupby('smmo_id')['daily_user_kills'].idxmax(),
-            "LEVEL":all_data.groupby('smmo_id')['daily_level'].idxmax()
+        
+        metrics = {
+            'daily_npc': 'NPC',
+            'daily_steps': 'STEPS',
+            'daily_user_kills': 'PVP',
+            'daily_level': 'LEVEL'
         }
-        for label, idx_series in cat.items():
-            best_df = all_data.loc[idx_series].reset_index().drop_duplicates(subset=['smmo_id'], keep='first')
-
-            print(f"Updating database for category: {label} ({len(best_df)} players)")
-
-            for _, row in best_df.iterrows():
-                sid = row['smmo_id']
-                print(sid)
-                await Database.delete_best(sid, label)
-                try:
+        for col, label in metrics.items():
+            idx_series = all_data.groupby('smmo_id')[col].idxmax()
+            for smmo_id, idx in idx_series.items():
+                if str(smmo_id) in players_info:
+                    row = all_data.loc[idx]
+                    await Database.delete_best(smmo_id,label)
                     await Database.insert_best(
-                        sid, 
-                        players_info[str(sid)],
+                        smmo_id, 
+                        players_info[str(smmo_id)],
                         label, 
-                        row['date'], 
+                        row['time'], 
                         row['daily_level'], 
                         row['daily_steps'], 
                         row['daily_npc'], 
                         row['daily_user_kills']
                     )
-                except KeyError:
-                    logger.warning("Error when updating best stats of user: %s",str(sid))
         logger.info("Repopulating Best stats. done.")
 
     
