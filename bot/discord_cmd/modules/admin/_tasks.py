@@ -44,11 +44,14 @@ class AdminTask(Cog):
                 channel = await self.client.fetch_channel(msg.channel_id)
                 message = await channel.fetch_message(msg.msg_id)
                 await message.delete()
-                await Database.delete_delmsg(msg.msg_id)
+                await Database.delete_delmsg(msg.msg_id,msg.channel_id)
             except NotFound:
                 continue
             except HTTPException:
                 continue
+            except AttributeError:
+                continue
+
         
     @loop(time=time(hour=12))
     async def set_new_gain_lb(self):
