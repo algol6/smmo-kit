@@ -58,7 +58,7 @@ class AdminTask(Cog):
             message = await helpers.get_channel_and_edit(self.client,d.channel_id,embed=emb)
             if not message:
                 continue
-            await Database.insert_gains_leaderboard(d.channel_id,message.id)
+            await Database.update_gains_leaderboard(d.channel_id,message.id)
 
     @loop(minutes=10.0)
     async def update_gains_lb(self):
