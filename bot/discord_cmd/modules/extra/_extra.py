@@ -36,7 +36,7 @@ class Extra(Cog):
         data.sort(key=lambda x: x.time_used,reverse=True)
         emb = helpers.Embed(title="SMMO-kit Commands Statistics")
         emb.add_field(name="", value="\n".join(f"`{x.id}` Used **{x.time_used:,}** times with an average time of **{x.average_time:.2f}**s" for x in data[:10]))
-        emb.set_footer(text="Since `v2.0.0`")
+        emb.set_footer(text="Since `v2.0.1`")
         await helpers.send(ctx,embed=emb)
 
     @subcommand("bot")
