@@ -203,7 +203,6 @@ class Users(Cog):
         )
         for x in best:
             title = ""
-            ind = 1
             if x.category == "STEPS":
                 ind = 2
                 title = "Most Steps done in a day:"
