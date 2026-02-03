@@ -60,7 +60,7 @@ async def get_war_guild(ctx:AutocompleteContext):
         except:
             return []
 
-async def make_wars_emb(guild, c, v, s_lb, war_xp,bo:bool|None = None) -> str:
+async def make_wars_emb(guild, c, v, g2, war_xp,bo:bool|None = None) -> str:
         xp: int = 0
         MAX_KILLS:int = 1500
         BASE_XP:int = 120000
@@ -70,10 +70,10 @@ async def make_wars_emb(guild, c, v, s_lb, war_xp,bo:bool|None = None) -> str:
             xp = v.experience
             msg = f"**Total** XP of #{c+1} **[{guild.name}](https://simple-mmo.com/guilds/view/{guild.id})**: {xp:,}\n"
         elif bo:
-            xp = s_lb[c-1].experience
+            xp = g2.experience
             msg = f"**Total** XP of #{c} **[{guild.name}](https://simple-mmo.com/guilds/view/{guild.id})**: {xp:,}\n"
         else:
-            xp = s_lb[c+1].experience
+            xp = g2.experience
             msg = f"**Total** XP of #{c+2} **[{guild.name}](https://simple-mmo.com/guilds/view/{guild.id})**: {xp:,}\n"
         if guild.eligible_for_guild_war:
             # wars_ongoing = await SMMOApi.get_guild_wars(guild.id, 1)
@@ -314,12 +314,18 @@ async def get_channel_and_edit(client:Bot,channel_id:int,message_id:int=None,con
         logger.warning("Unknown channel type was received from Discord")
         return True
 
-async def send(ctx,content:str=None,embed:Embed=None,view=None,file=MISSING):
+async def send(ctx,content:str=None,embed:Embed=None,view=None,file=MISSING,delete_after=None):
     try:
         if isinstance(ctx,ApplicationContext):
-            return await ctx.followup.send(content=content,embed=embed,view=view,file=file)
+            msg = await ctx.followup.send(content=content,embed=embed,view=view,file=file)
+            if delete_after is not None:
+                await Database.insert_delmsg(msg.id,ctx.channel_id,delete_after)
+            return msg
         elif isinstance(ctx,GuildChannel):
-            return await ctx.send(content=content,embed=embed,view=view,file=file)
+            msg = await ctx.send(content=content,embed=embed,view=view,file=file)
+            if delete_after is not None:
+                await Database.insert_delmsg(msg.id,ctx.id,delete_after)
+            return msg
     except Forbidden:
         logger.exception("Forbidden, i can't send messages there")
     except HTTPException:

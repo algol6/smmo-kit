@@ -232,31 +232,34 @@ class Guild(Cog):
 
         embed = helpers.Embed(title="Guild Leaderboard Stats")
         x = True
+        prev = None
         for c, v in enumerate(season_lb):
             if v.guild["id"] == guild_id:
                 x = False
                 if c != 0:
-                    previus_guild = await SMMOApi.get_guild_info(season_lb[c-1].guild["id"])
+                    previus_guild = await SMMOApi.get_guild_info(prev.guild["id"])
                     embed.add_field(
                         name="Previous guild",
-                        value=await self.make_the_message(previus_guild, c, v, season_lb, war_xp,True),
+                        value=await helpers.make_wars_emb(previus_guild, c, v, prev, war_xp,True),
                         inline=False
                         )
                 
                 cur_guild = await SMMOApi.get_guild_info(guild_id)
-                msg: str = await self.make_the_message(cur_guild, c, v, season_lb, war_xp)
+                msg: str = await helpers.make_wars_emb(cur_guild, c, v, season_lb, war_xp)
                 embed.add_field(
                     name=v.guild["name"],
                     value=msg
                 )
                 if c < 49:
-                    successive_guild = await SMMOApi.get_guild_info(season_lb[c+1].guild["id"])
+                    s_guild = next(season_lb)
+                    successive_guild = await SMMOApi.get_guild_info(s_guild.guild["id"])
                     embed.add_field(
                         name="Successive guild",
-                        value=await self.make_the_message(successive_guild, c, v, season_lb, war_xp,False),
+                        value=await helpers.make_wars_emb(successive_guild, c, v, s_guild, war_xp,False),
                         inline=False
                         )
                 break
+            prev = v
         if x:
             return await helpers.send(ctx,content="Wrong id, or guild not in guild leaderboard")
         await helpers.send(ctx,embed=embed)
