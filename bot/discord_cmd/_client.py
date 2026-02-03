@@ -41,14 +41,14 @@ async def on_application_command_error(ctx: ApplicationContext, error: DiscordEx
         except:
             guild = f"[{ctx.guild.name} #{ctx.channel}]"
 
-    logger.error(" from %s:\n%s",guild,error)
+    logger.error("[/%s] from %s:\n%s",ctx.command.qualified_name,guild,error)
     if isinstance(error, errors.NotFound):
         logger.warning("Error 'discord.errors.NotFound'")
     elif isinstance(error,ApiError):
         return await helpers.send(ctx,content=f"Error caused by: {error}")
     elif isinstance(error,HTTPError):
         return await helpers.send(ctx,content=f"Error caused by: {error}")
-    await helpers.send(ctx,"Unexpected error. Try again later.")
+    await helpers.send(ctx,"Unexpected error. Try again later.",delete_after=3600)
 
 def main():
     try:
