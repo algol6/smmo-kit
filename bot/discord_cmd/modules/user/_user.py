@@ -172,6 +172,48 @@ class Users(Cog):
         return await helpers.send(ctx,file=file,embed=emb)
     
     @subcommand("user", independent=True)
+    @slash_command(description="Get the average stats.")
+    @guild_only()
+    @permissions.require_linked_account()
+    @command_utils.auto_defer(False)
+    @command_utils.statistics("/user avg")
+    @command_utils.took_too_long()
+    async def avg(self,ctx:ApplicationContext,user:Member = None, smmo_id: int = None):
+        game_user = await helpers.get_user(ctx, smmo_id, user)
+        if not game_user:
+            return
+        avg = await Database.select_avg_stats(game_user.id)
+        avgw = await Database.select_avg_stats_week(game_user.id)
+        day_count = await Database.select_counter_user_stats(game_user.id)
+        avg_msg = f"Could not retrive data."
+        avgw_msg = f"Could not retrive data."
+        TEMPLATE:str = "Levels: {lvl:,.0f}\nSteps: {stp:,.0f}\nNPC Kills: {npc:,.0f}\nPVP Kills: {pvp:,.0f}"
+        if avg and avg.level:
+            avg_msg = TEMPLATE.format(lvl=avg.level,stp=avg.steps,npc=avg.npc_kills,pvp=avg.user_kills)
+        if avgw and avgw.level:
+            avgw_msg = TEMPLATE.format(lvl=avgw.level,stp=avgw.steps,npc=avgw.npc_kills,pvp=avgw.user_kills)
+        
+        emb = helpers.Embed(
+            title=f"[{game_user.id}] {game_user.name} Average Stats",
+            url=f"https://simple-mmo.com/user/view/{game_user.id}",
+            thumbnail=f"https://simple-mmo.com{game_user.avatar}",
+            description=f"Last updated: <t:{round(datetime.now().timestamp())}:R>",
+        )
+        emb.add_field(
+            name=f"All-Time Average gains ({day_count:,} days):",
+            value=avg_msg,
+            inline=False,
+        )
+
+        emb.add_field(
+            name="Past 7 Days Average gains:",
+            value=avgw_msg,
+            inline=False,
+        )
+        emb.set_footer(text="Data limited to that saved in the Database.")
+        await helpers.send(ctx,embed=emb)
+        
+    @subcommand("user", independent=True)
     @slash_command(description="Get the overall stats.")
     @guild_only()
     @permissions.require_linked_account()
@@ -182,43 +224,34 @@ class Users(Cog):
         game_user = await helpers.get_user(ctx, smmo_id, user)
         if not game_user:
             return
-        avg = await Database.select_avg_stats(game_user.id)
-        if avg is None or avg.level is None:
-            return await helpers.send(ctx,"Some data missing...")
         best = await Database.select_best(game_user.id)
         is_empty,best = helpers.gen_is_empty(best)
         if is_empty:
             return await helpers.send(ctx,content="No stats found, wait for server reset")
-        
         emb = helpers.Embed(
             title=f"[{game_user.id}] {game_user.name}",
             url=f"https://simple-mmo.com/user/view/{game_user.id}",
             thumbnail=f"https://simple-mmo.com{game_user.avatar}",
             description=f"Last updated: <t:{round(datetime.now().timestamp())}:R>",
         )
-        emb.add_field(
-            name="All-Time Average gains:",
-            value=f"**Levels**: {int(avg.level):,}\n**Steps**: {int(avg.steps):,}\n**NPC Kills**: {int(avg.npc_kills):,}\n**PVP Kills**: {int(avg.user_kills):,}",
-            inline=False,
-        )
         for x in best:
             title = ""
             if x.category == "STEPS":
-                ind = 2
+                ind = 3
                 title = "Most Steps done in a day:"
             elif x.category == "NPC":
-                ind = 3
+                ind = 4
                 title = "Most NPC killed in a day:"
             elif x.category == "PVP":
-                ind = 4
+                ind = 5
                 title = "Most User killed in a day:"
             elif x.category == "LEVEL":
-                ind = 1
+                ind = 2
                 title = "Most Level gains in a day:"
             emb.insert_field_at(
                 index=ind,
                 name=title,
-                value=f"**Timeframe**: <t:{int(x.date) - 86400}> - <t:{int(x.date)}>\n**Levels**: {int(x.levels):,}\n**Steps**: {int(x.steps):,}\n**NPC Kills**: {int(x.npc):,}\n**PVP Kills**: {int(x.pvp):,}",
+                value=f"Timeframe: <t:{int(x.date) - 86400}> - <t:{int(x.date)}>\nLevels: {int(x.levels):,}\nSteps: {int(x.steps):,}\nNPC Kills: {int(x.npc):,}\nPVP Kills: {int(x.pvp):,}",
                 inline=False,
             )
         emb.set_footer(text="Data limited to that saved in the Database.")
