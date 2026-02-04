@@ -50,17 +50,18 @@ class LeaderboardView(discord.ui.View):
         position = 0
         your_value = 0
         msg = ""
-        for usr,i in zip(self.data[self.type],range(1,len(self.data[self.type])+1)):
+        for i,usr in enumerate(self.data[self.type],start=1):
             if position == 0:
-                position = i if usr.smmo_id == self.user_id else 0
-                if self.type == 0:
-                    your_value = usr.steps if usr.smmo_id == self.user_id else 0
-                elif self.type == 1:
-                    your_value = usr.npc if usr.smmo_id == self.user_id else 0
-                elif self.type == 2:
-                    your_value = usr.pvp if usr.smmo_id == self.user_id else 0
-                elif self.type == 3:
-                    your_value = usr.levels if usr.smmo_id == self.user_id else 0
+                if usr.smmo_id == self.user_id:
+                    position = i
+                    if self.type == 0:
+                        your_value = usr.steps
+                    elif self.type == 1:
+                        your_value = usr.npc
+                    elif self.type == 2:
+                        your_value = usr.pvp
+                    elif self.type == 3:
+                        your_value = usr.levels
             if i>10:
                 continue
             if self.type == 0:
@@ -71,32 +72,8 @@ class LeaderboardView(discord.ui.View):
                 value = usr.pvp
             elif self.type == 3:
                 value = usr.levels
-            msg += f"#{i} [{usr.name}](https://simple-mmo.com/user/view/{usr.smmo_id}): **{value:,}** <t:{int(usr.date-86400)}>-<t:{int(usr.date)}>\n"
-        # TODO: betterfix
-        if len(msg) > 1024:
-            msg = ""
-            for usr,i in zip(self.data[self.type],range(1,len(self.data[self.type])+1)):
-                if position == 0:
-                    position = i if usr.smmo_id == self.user_id else 0
-                    if self.type == 0:
-                        your_value = usr.steps if usr.smmo_id == self.user_id else 0
-                    elif self.type == 1:
-                        your_value = usr.npc if usr.smmo_id == self.user_id else 0
-                    elif self.type == 2:
-                        your_value = usr.pvp if usr.smmo_id == self.user_id else 0
-                    elif self.type == 3:
-                        your_value = usr.levels if usr.smmo_id == self.user_id else 0
-                if i>10:
-                    continue
-                if self.type == 0:
-                    value = usr.steps
-                elif self.type == 1:
-                    value = usr.npc
-                elif self.type == 2:
-                    value = usr.pvp
-                elif self.type == 3:
-                    value = usr.levels
-                msg += f"#{i} {usr.name}: **{value:,}** <t:{int(usr.date-86400)}>-<t:{int(usr.date)}>\n"
+            
+            msg += f"#{i} [{usr.name}](https://simple-mmo.com/user/view/{usr.smmo_id}): **{value:,}** {f"<t:{int(usr.date-86400)}>-<t:{int(usr.date)}>" if not isinstance(usr.date,bytes) else ""}\n"
         emb = helpers.Embed(title=f"{TITLE[self.type]} Leaderboard",description=f"You are placed #{position}/{len(self.data[self.type])} ({your_value:,})")
         emb.add_field(name="", 
                       value=msg, 
