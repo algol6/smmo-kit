@@ -356,7 +356,7 @@ class Guild(Cog):
 
 
     @subcommand("guild members")
-    @slash_command(description="Show top 5 members stats for each category(lvl,steps,npc,pvp)")
+    @slash_command(description="Show top 5 members stats for each category(lvl,steps,npc,pvp)",name="lb")
     @guild_only()
     @option(name="timeframe", choices=["Daily","Past 7 Days","In-Game Weekly","Yesterday","Monthly","In-Game Monthly"])
     @permissions.require_linked_server()
@@ -386,6 +386,8 @@ class Guild(Cog):
         
         for m2 in guild_members:
             m_s = await Database.select_user_stat(m2.user_id,date.year,date.month,date.day)
+            if m_s is None:
+                continue
             if timeframe == "Yesterday":
                 m_stats = await Database.select_user_stat(m_s,to_date.year,to_date.month,to_date.day)
                 if m_stats is not None:
