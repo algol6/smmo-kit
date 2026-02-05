@@ -83,7 +83,7 @@ class Worldboss(Cog):
     async def set_message(self,ctx:ApplicationContext,channel:TextChannel=None) -> None:
         if channel is None:
             channel = ctx.channel
-        await helpers.get_channel_and_edit(self.client,channel.id,delete_after=1)
+        #await helpers.get_channel_and_edit(self.client,channel.id,delete_after=1)
         
         if not await Database.insert_wb_message(channel.id):
             return await helpers.send(ctx,content="Message already set up in this channel")
@@ -101,9 +101,9 @@ class Worldboss(Cog):
     async def set_ping(self,ctx:ApplicationContext,role:Role,minutes_before:int,channel:TextChannel=None,god_only:str="No") -> None:
         if channel is None:
             channel = ctx.channel
-        await helpers.get_channel_and_edit(self.client,channel.id,delete_after=1)
+        #await helpers.get_channel_and_edit(self.client,channel.id,delete_after=1)
 
-        if not await Database.insert_wb_notification(channel.id, role.id, minutes_before * 60, False if god_only=="No" else True):
+        if not await Database.insert_wb_notification(channel.id, role.id, minutes_before * 60, god_only=="Yes"):
             return await helpers.send(ctx,content="Notification already set up in this channel")
         await helpers.send(ctx,content="Notifications has been set up")
 
