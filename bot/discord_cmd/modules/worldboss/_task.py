@@ -51,19 +51,20 @@ class WorldbossTasks(Cog):
         emb = helpers.Embed(title=wb_data.name,url="https://simple-mmo.com/worldboss/all",thumbnail=f"https://simple-mmo.com/img/sprites/{wb_data.avatar}.png")
                 
         emb.add_field(name="Level", value=wb_data.level, inline=False)
-        emb.add_field(name="HP", value=f"{format(wb_data.current_hp,",d")} :heart:", inline=False)
+        emb.add_field(name="HP", value=f"{wb_data.current_hp:,} :heart:", inline=False)
         emb.add_field(name="God", value=f"{":white_check_mark:" if bool(wb_data.god) else ":x:"}", inline=False)
-        emb.add_field(name="Strength", value=f"{format(wb_data.strength,",d")} :crossed_swords:", inline=True)
-        emb.add_field(name="Defence", value=f"{format(wb_data.defence,",d")} :shield:", inline=True)
-        emb.add_field(name="Dexterity", value=f"{format(wb_data.dexterity,",d")} :boot:", inline=True)
+        emb.add_field(name="Strength", value=f"{wb_data.strength:,} :crossed_swords:", inline=True)
+        emb.add_field(name="Defence", value=f"{wb_data.defence:,} :shield:", inline=True)
+        emb.add_field(name="Dexterity", value=f"{wb_data.dexterity:,} :boot:", inline=True)
         emb.add_field(name="Active", value=f"<t:{wb_data.enable_time}:R> (<t:{wb_data.enable_time}>)", inline=False)
     
         for d in data:
             if d.boss_id == wb_data.id:
                 continue
             
-            await helpers.get_channel_and_edit(self.client,d.channel_id,delete_after=int(wb_data.enable_time - int(datetime.now().timestamp()) + 120), view=WorldbossUrlButton())
-            await Database.update_wb_message(channel_id=d.channel_id, boss_id=wb_data.id)
+            if not await helpers.get_channel_and_edit(self.client,d.channel_id,delete_after=int(wb_data.enable_time + 120), view=WorldbossUrlButton()):
+                logger.warning("Could not update wb message for: %s",d)
+            await Database.update_wb_message(d.channel_id,wb_data.id)
             
 
     async def notify_wb(self, wb:WorldBoss):
@@ -74,7 +75,7 @@ class WorldbossTasks(Cog):
             if wb.enable_time <= datetime.now().timestamp() + d.seconds_before:
                 await Database.update_wb_notification(d.channel_id, wb.id,d.seconds_before)
                 if d.god == 1 and wb.god:
-                    await helpers.get_channel_and_edit(self.client,d.channel_id,content=f"<@&{d.role_id}> world boss **{wb.name}** in about <t:{wb.enable_time}:R>", delete_after=(d.seconds_before+60))
+                    await helpers.get_channel_and_edit(self.client,d.channel_id,content=f"<@&{d.role_id}> world boss **{wb.name}** in about <t:{wb.enable_time}:R>", delete_after=(wb.enable_time+60))
                     continue
-                await helpers.get_channel_and_edit(self.client,d.channel_id,content=f"<@&{d.role_id}> world boss **{wb.name}** in about <t:{wb.enable_time}:R>", delete_after=(d.seconds_before+60))
+                await helpers.get_channel_and_edit(self.client,d.channel_id,content=f"<@&{d.role_id}> world boss **{wb.name}** in about <t:{wb.enable_time}:R>", delete_after=(wb.enable_time+60))
               
