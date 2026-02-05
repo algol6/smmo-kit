@@ -411,7 +411,7 @@ class Embed(Embed):
         color = (Color.from_rgb(*get_dominant_color(thumbnail)) if thumbnail else Color.random()) if not color else color
         # color = Color.random() if color is None else color
         super().__init__(colour=colour,color=color,title=title,type=type,url=url,description=description,timestamp=timestamp,fields=fields,author=author,footer=footer,image=image,thumbnail=thumbnail)
-        self.set_footer(text="TEST MODE. Might get random error <-<")
+        #self.set_footer(text="TEST MODE. Might get random error <-<")
 
 def analyseImage(path):
     im = Image.open(path)
