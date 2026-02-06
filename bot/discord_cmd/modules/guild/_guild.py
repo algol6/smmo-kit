@@ -47,7 +47,7 @@ class Guild(Cog):
         emb = helpers.Embed(title=f"{guild.name}'s Overall", description="Most Experience gained in a day:", thumbnail=f"https://simple-mmo.com/img/icons/{guild.icon}")
         for d in data:
             emb.add_field(name="", 
-                        value=f"<t:{int(d.time)}>-<t:{int((datetime(d.year,d.month,d.day,11,59)+timedelta(days=1)).timestamp())}>\n**Experience**: +{format(d.experience,",d")}",
+                        value=f"<t:{int((datetime(d.year,d.month,d.day,11,59)).timestamp()-86400)}>-<t:{int(d.time)}>\n**Experience**: +{d.experience:,}",
                         inline=False)
         emb.set_footer(text="Data limited to that saved in the Database.")
         await helpers.send(ctx,embed=emb)
