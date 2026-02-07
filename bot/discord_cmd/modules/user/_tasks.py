@@ -7,6 +7,7 @@ from bot.discord_cmd.helpers import helpers
 
 from bot.api import SMMOApi
 from bot.database import Database
+from bot.api.model import GuildMemberInfo
 from itertools import chain
 
 class UsersTask(Cog):
@@ -24,12 +25,18 @@ class UsersTask(Cog):
         ids = set()
         guild_ids = set()
         banned = await Database.select_banned()
-        current_guild: list = await SMMOApi.get_guild_season_leaderboard(await helpers.get_current_season_id())
+        current_guild: list = chain(await SMMOApi.get_guild_season_leaderboard(await helpers.get_current_season_id()),await Database.select_all_server_guild())
 
         players_info = {}
         for g in current_guild:
-            guild_ids.add(g.guild["id"])
-            guild = await SMMOApi.get_guild_members(g.guild["id"])
+            if isinstance(g,GuildMemberInfo):
+                g_id = g.guild["id"]
+            else:
+                g_id = g
+            if g_id in guild_ids:
+                continue
+            guild_ids.add(g_id)
+            guild = await SMMOApi.get_guild_members(g_id)
             date = datetime.now(tz=timezone.utc)
             date_timestamp = date.timestamp()
             for user in guild:
@@ -38,27 +45,6 @@ class UsersTask(Cog):
                 players_info[str(user.user_id)] = user.name
                 if not await Database.insert_user_stat(user.user_id,date.year,date.month,date.day,date_timestamp,user.level,user.steps,user.npc_kills,user.user_kills,-1,-1,0,-1):
                     logger.warning("Error while saving user from guild_members of season lb: %s",user)
-                ids.add(user.user_id)
-                if user.banned:
-                    await Database.insert_banned(user.user_id)
-
-        guilds = await Database.select_all_server_guild()
-        for guild in guilds:
-            if guild in guild_ids:
-                continue
-            member_guild = await SMMOApi.get_guild_members(guild)
-            date = datetime.now(tz=timezone.utc)
-            date_timestamp = date.timestamp()
-            for user in member_guild:
-                if user.user_id in ids or user.user_id in banned:
-                    continue
-                players_info[str(user.user_id)] = user.name
-                # player = await SMMOApi.get_player_info(user.user_id)
-                # if player is not None:
-                #     await Database.insert_user_stat(player)
-                # stats_x_best.append([user,date])
-                if not await Database.insert_user_stat(user.user_id,date.year,date.month,date.day,date_timestamp,user.level,user.steps,user.npc_kills,user.user_kills,-1,-1,0,-1):
-                    logger.warning("Error while saving user from guild_members not in season lb: %s",user)
                 ids.add(user.user_id)
                 if user.banned:
                     await Database.insert_banned(user.user_id)
@@ -82,10 +68,8 @@ class UsersTask(Cog):
             player = await SMMOApi.get_player_info(user.smmo_id)
             if player is not None and player.id is not None:
                 players_info[str(player.id)] = player.name
-                # stats_x_best.append([player,date])
                 if not await Database.insert_user_stat(player.id,date.year,date.month,date.day,date_timestamp,player.level,player.steps,player.npc_kills,player.user_kills,player.quests_performed,player.bounties_completed,player.reputation,player.chests_opened):
                     logger.warning("Error while saving linked user: %s",user)
-
                 ids.add(user.smmo_id)
                 if player.banned:
                     await Database.insert_banned(player.id)
