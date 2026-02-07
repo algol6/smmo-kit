@@ -169,10 +169,7 @@ class SMMOApi:
 
     @staticmethod
     async def get_guild_member_contribution(guild_id: int, user_id: int, api_key:str=None) -> model.GuildMemberContribution | None:
-        if api_key is None:
-            resp = await SMMOApi._request(f"v1/guilds/members/{guild_id}/contribution/{user_id}")
-        else:
-            resp = await SMMOApi._request(f"v1/guilds/members/{guild_id}/contribution/{user_id}", api_key)
+        resp = await SMMOApi._request(f"v1/guilds/members/{guild_id}/contribution/{user_id}", api_key)
         if resp is not None:
             return model.GuildMemberContribution(**resp)
 
