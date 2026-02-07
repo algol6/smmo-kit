@@ -287,7 +287,7 @@ class Users(Cog):
             return await helpers.send(ctx,content="Wrong date format. use dd/mm/yyyy format")
 
         if s_date >= e_date:
-            return await helpers.send(ctx,content="Starting date can't be later than ending date")
+            return await helpers.send(ctx,content="Starting date can't be after than ending date")
         game_user = await helpers.get_user(ctx, smmo_id, user)
         if game_user is None:
             return
