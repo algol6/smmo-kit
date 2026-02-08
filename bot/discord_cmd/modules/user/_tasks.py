@@ -7,7 +7,7 @@ from bot.discord_cmd.helpers import helpers
 
 from bot.api import SMMOApi
 from bot.database import Database
-from bot.api.model import GuildMemberInfo
+from bot.api.model import GuildSeasonLeaderboard
 from itertools import chain
 
 class UsersTask(Cog):
@@ -29,7 +29,7 @@ class UsersTask(Cog):
 
         players_info = {}
         for g in current_guild:
-            if isinstance(g,GuildMemberInfo):
+            if isinstance(g,GuildSeasonLeaderboard):
                 g_id = g.guild["id"]
             else:
                 g_id = g
