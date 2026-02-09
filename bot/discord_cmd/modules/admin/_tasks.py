@@ -45,7 +45,6 @@ class AdminTask(Cog):
                 message = await channel.fetch_message(msg.msg_id)
                 await message.delete()
                 await Database.delete_delmsg(msg.msg_id,msg.chn_id)
-                print("msg deleted")
             except NotFound:
                 continue
             except HTTPException:
