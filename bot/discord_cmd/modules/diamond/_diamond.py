@@ -23,7 +23,7 @@ class Diamonds(Cog):
         diamond_market = sorted(await SMMOApi.get_diamond_market(), key=lambda x: x.price_per_diamond)[:5]
         emb = helpers.Embed(title="Diamond Market", description=f"Last Update: <t:{int(datetime.now().timestamp())}:R>")
         for entry in diamond_market:
-            emb.add_field(name="",value=f"**Seller**: [{entry.seller.name}](https://simple-mmo.com/user/view/{entry.seller.id})\n**Price**: {format(entry.price_per_diamond,",d")} :coin:\n**Amount**: {format(entry.diamonds_remaining,",d")}/{format(entry.diamond_amount_at_start,",d")} :gem:",inline=False)
+            emb.add_field(name="",value=f"**Seller**: [{entry.seller.name}](https://simple-mmo.com/user/view/{entry.seller.id})\n**Price**: {entry.price_per_diamond:,} :coin:\n**Amount**: {entry.diamonds_remaining:,}/{entry.diamond_amount_at_start:,} :gem:",inline=False)
         await helpers.send(ctx,embed=emb,view=MarketUrlButton())
 
     

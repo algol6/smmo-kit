@@ -80,13 +80,13 @@ class AdvleaderboardView(discord.ui.View):
         tiers_name:tuple[str] = ("All","Tier 1 (Levels 1-25)","Tier 2 (Levels 26-100)","Tier 3 (Levels 101-500)","Tier 4 (Levels 501-1,000)","Tier 5 (Levels 1,001-5,000)","Tier 6 (Levels 5,001-10,000)","Tier 7 (Levels 10,001-99,999,999+)")
         colors:tuple[hex] = (None,0x00f6ff,0xf1c40f,0x8e44ad,0xc0392b,0xe67e22,0x2980b9,0x34495e)
 
-        emb = helpers.Embed(title=f"{tiers_name[self.tier]} - {("NPC","PVP","Steps","Levels")[self.data_type]}",
+        emb = helpers.Embed(title=f"{tiers_name[self.tier]} - {('NPC','PVP','Steps','Levels')[self.data_type]}",
                             description=f"Stats from <t:{self.start_data}> to <t:{self.end_data}>",
                             color=colors[self.tier])
         until_item = self.current_page * self.sep
         from_item = until_item - self.sep
         if len(data) != 0:
-            emb.add_field(name="", value="\n".join([f"#{i} [{v["name"]}](https://simple-mmo.com/user/view/{v["id"]}): {format(v["stats"],",d")}" for v,i in zip(self.data[self.tier][self.data_type][from_item:until_item],range(from_item + 1, until_item + 1))]))
+            emb.add_field(name="", value="\n".join([f"#{i} [{v['name']}](https://simple-mmo.com/user/view/{v['id']}): {v['stats']:,}" for v,i in zip(self.data[self.tier][self.data_type][from_item:until_item],range(from_item + 1, until_item + 1))]))
         else:
             emb.add_field(name="", value="No members in this tier")
         emb.set_footer(text=f"Page {self.current_page}/{(len(self.data[self.tier][self.data_type])) // self.sep + 1}")

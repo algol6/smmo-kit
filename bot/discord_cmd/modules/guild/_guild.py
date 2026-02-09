@@ -165,7 +165,7 @@ class Guild(Cog):
         is_empty,season_lb = helpers.gen_is_empty(await SMMOApi.get_guild_season_leaderboard(season_id))
         if is_empty:
             return await helpers.send(ctx,"No data found. try again later")
-        msg: str = "\n".join(f"#{x.position} **[{x.guild["name"]}](https://simple-mmo.com/guilds/view/{x.guild["id"]})** ({format(x.experience, ",d")} gxp)" for x,_ in zip(season_lb,range(number)))
+        msg: str = "\n".join(f"#{x.position} **[{x.guild['name']}](https://simple-mmo.com/guilds/view/{x.guild['id']})** ({x.experience:,} gxp)" for x,_ in zip(season_lb,range(number)))
         embed = helpers.Embed(title=f"Top {number} Guilds")
         if len(msg) >= 1024:
             final_msg = msg.split("\n")
@@ -303,7 +303,7 @@ class Guild(Cog):
             guild_id = ctx.user_guild_id
         members = await SMMOApi.get_guild_members(guild_id)
         message = await helpers.send(ctx,content="List of steppers will be loaded here.")
-        embed = helpers.Embed(title=f"Here the location of {"all" if who == "All" else "current"} steppers")
+        embed = helpers.Embed(title=f"Here the location of {'all' if who == 'All' else 'current'} steppers")
         embed.add_field(name="", value="*Might take up to 10 minutes to load all data.*", inline=False)
         x:dict = {}
         member_count:int=0
@@ -331,13 +331,13 @@ class Guild(Cog):
                     else:
                         x[player.current_location.name] = {"amount":1}
                         x[player.current_location.name]["people"] = [player.name]
-            embed.set_field_at(0, name="", value="\n".join(f"**{key}**: {str(value["amount"])} {f"[{",".join(value["people"])}]" if show_names=="Yes" and value["amount"] <= 10 else ""}" for key,value in x.items()))
+            embed.set_field_at(0, name="", value="\n".join(f"**{key}**: {str(value['amount'])} {f"[{','.join(value['people'])}]" if show_names=="Yes" and value['amount'] <= 10 else ''}" for key,value in x.items()))
             embed.set_footer(text="Loading...")
             await message.edit(content="", embed=embed)
 
         x = dict(sorted(x.items(), key=lambda item: -item[1]["amount"]))
 
-        msg:str = "\n".join(f"**{key}**: {str(value["amount"])} {f"[{",".join(value["people"])}]" if show_names=="Yes" else ""}" for key,value in x.items())
+        msg:str = "\n".join(f"**{key}**: {str(value["amount"])} {f"[{','.join(value['people'])}]" if show_names=='Yes' else ''}" for key,value in x.items())
 
         final_msg = msg.split("\n")
         #msg:str = "\n".join(f"{key}: {str(value)}" for key,value in x.items())
@@ -410,19 +410,19 @@ class Guild(Cog):
                             description=f"**Stats**: from <t:{int(date.timestamp())}> to <t:{int(to_date.timestamp())}>\n"
                                         f"**Last update**: <t:{int(datetime.now().timestamp())}:R>\n"
                                         f"**Guild**: {guild.name}\n"
-                                        f"**Exp**: {format(guild.current_season_exp,",d")} (+{guild.current_season_exp-x:,})",
+                                        f"**Exp**: {guild.current_season_exp:,} (+{guild.current_season_exp-x:,})",
                             thumbnail=f"https://simple-mmo.com/img/icons/{guild.icon}")
         emb.add_field(name=f"Steps: (Total: {total[0]:,})",
-                      value="\n".join(f"[{x["name"]}](https://simple-mmo.com/user/view/{x["id"]}): {x["steps"]:,}" for x in sorted(var, key=lambda member: (member["steps"]),reverse=not reverse)[:5]),
+                      value="\n".join(f"[{x['name']}](https://simple-mmo.com/user/view/{x['id']}): {x['steps']:,}" for x in sorted(var, key=lambda member: (member["steps"]),reverse=not reverse)[:5]),
                       inline=False)
         emb.add_field(name=f"NPC: (Total: {total[1]:,})",
-                      value="\n".join(f"[{x["name"]}](https://simple-mmo.com/user/view/{x["id"]}): {x["npc_kills"]:,}" for x in sorted(var, key=lambda member: (member["npc_kills"]),reverse=not reverse)[:5]),
+                      value="\n".join(f"[{x['name']}](https://simple-mmo.com/user/view/{x['id']}): {x['npc_kills']:,}" for x in sorted(var, key=lambda member: (member["npc_kills"]),reverse=not reverse)[:5]),
                       inline=False)
         emb.add_field(name=f"PVP: (Total: {total[2]:,})",
-                      value="\n".join(f"[{x["name"]}](https://simple-mmo.com/user/view/{x["id"]}): {x["user_kills"]:,}" for x in sorted(var, key=lambda member: (member["user_kills"]),reverse=not reverse)[:5]),
+                      value="\n".join(f"[{x['name']}](https://simple-mmo.com/user/view/{x['id']}): {x['user_kills']:,}" for x in sorted(var, key=lambda member: (member["user_kills"]),reverse=not reverse)[:5]),
                       inline=False)
         emb.add_field(name=f"Levels: (Total: {total[3]:,})",
-                      value="\n".join(f"[{x["name"]}](https://simple-mmo.com/user/view/{x["id"]}): {x["levels"]:,}" for x in sorted(var, key=lambda member: (member["levels"]),reverse=not reverse)[:5]),
+                      value="\n".join(f"[{x['name']}](https://simple-mmo.com/user/view/{x['id']}): {x['levels']:,}" for x in sorted(var, key=lambda member: (member["levels"]),reverse=not reverse)[:5]),
                       inline=False)
         await helpers.send(ctx,embed=emb)
 
@@ -543,7 +543,7 @@ class Guild(Cog):
         req = await Database.select_requirements(ctx.user_guild_id)
         if req is None:
             return await helpers.send(ctx,content="There are no requirements set.")
-        msg: str = f"**Gains you need to meet every {f"*{req.days}* days" if req.days != 1 else "day"}**:\n"
+        msg: str = f"**Gains you need to meet every {f'*{req.days}* days' if req.days != 1 else 'day'}**:\n"
         if req.levels != 0:
             msg += f"*Levels*: {req.levels}\n"
         if req.npc != 0:

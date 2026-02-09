@@ -60,7 +60,7 @@ class GuildGainsView(discord.ui.View):
                                 g.experience = g_stats.experience
                                 g.position = s.position
                         
-                        msg = f"{msg}{"\n" if i != 0 else ""}#{g.position} **[{g.guild["name"]}](https://simple-mmo.com/guilds/view/{g.guild["id"]})**: {format(g.experience, ",d")}xp (+*{format(abs((s.experience if s is not None else 0)-g.experience), ",d")}*)"
+                        msg = f"{msg}{"\n" if i != 0 else ""}#{g.position} **[{g.guild['name']}](https://simple-mmo.com/guilds/view/{g.guild['id']})**: {g.experience:,}xp (+*{abs((s.experience if s is not None else 0)-g.experience):,}*)"
                         if s is not None:
                             if g.position == s.position:
                                 pass
@@ -86,7 +86,7 @@ class GuildGainsView(discord.ui.View):
                             g.experience = g_stats.experience
                             g.position = s.position
                     
-                    msg = f"{msg}{"\n" if i != 0 else ""}#{g.position} **[{g.guild["name"]}](https://simple-mmo.com/guilds/view/{g.guild["id"]})**: {format(g.experience, ",d")}xp (+*{format(abs((s.experience if s is not None else 0)-g.experience), ",d")}*)"
+                    msg = f"{msg}{"\n" if i != 0 else ""}#{g.position} **[{g.guild['name']}](https://simple-mmo.com/guilds/view/{g.guild['id']})**: {g.experience:,}xp (+*{abs((s.experience if s is not None else 0)-g.experience):,}*)"
                     if s is not None:
                         if g.position == s.position:
                             pass

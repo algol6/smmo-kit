@@ -49,7 +49,6 @@ class WorldbossTasks(Cog):
     async def update_message(self, wb_data:WorldBoss):
         data = await Database.select_wb_message()
         emb = helpers.Embed(title=wb_data.name,url="https://simple-mmo.com/worldboss/all",thumbnail=f"https://simple-mmo.com/img/sprites/{wb_data.avatar}.png")
-                
         emb.add_field(name="Level", value=wb_data.level, inline=False)
         emb.add_field(name="HP", value=f"{wb_data.current_hp:,} :heart:", inline=False)
         emb.add_field(name="God", value=f"{":white_check_mark:" if bool(wb_data.god) else ":x:"}", inline=False)
@@ -62,7 +61,7 @@ class WorldbossTasks(Cog):
             if d.boss_id == wb_data.id:
                 continue
             
-            if not await helpers.get_channel_and_edit(self.client,d.channel_id,delete_after=int(wb_data.enable_time + 120), view=WorldbossUrlButton()):
+            if not await helpers.get_channel_and_edit(self.client,d.channel_id,delete_after=int(wb_data.enable_time - datetime.now().timestamp() + 120), view=WorldbossUrlButton()):
                 logger.warning("Could not update wb message for: %s",d)
             await Database.update_wb_message(d.channel_id,wb_data.id)
             
@@ -74,8 +73,7 @@ class WorldbossTasks(Cog):
                 continue
             if wb.enable_time <= datetime.now().timestamp() + d.seconds_before:
                 await Database.update_wb_notification(d.channel_id, wb.id,d.seconds_before)
-                if d.god == 1 and wb.god:
-                    await helpers.get_channel_and_edit(self.client,d.channel_id,content=f"<@&{d.role_id}> world boss **{wb.name}** in about <t:{wb.enable_time}:R>", delete_after=(wb.enable_time+60))
+                if d.god == 1 and not wb.god:
                     continue
-                await helpers.get_channel_and_edit(self.client,d.channel_id,content=f"<@&{d.role_id}> world boss **{wb.name}** in about <t:{wb.enable_time}:R>", delete_after=(wb.enable_time+60))
+                await helpers.get_channel_and_edit(self.client,d.channel_id,content=f"<@&{d.role_id}> world boss **{wb.name}** in about <t:{wb.enable_time}:R>", delete_after=(wb.enable_time - datetime.now().timestamp() + 60))
               

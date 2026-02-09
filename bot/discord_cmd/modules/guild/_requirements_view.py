@@ -67,24 +67,26 @@ class RequirementsView(discord.ui.View):
     
     async def create_embed(self, data):
         title: list[str] = ["Activity","Levels","Npc","Pvp","Steps"]
-
+        TEMPLATES:list[str] = ["".join(("Players inactive more than ",f"{f'{self.req.days} days' if self.req.days != 1 else 'one day'}:")),
+                               "".join(("Players that have gained less than {value:,} {category} in ",f"{f'{self.req.days} days' if self.req.days != 1 else 'one day'}:")),
+                               "[{name}](https://simple-mmo.com/user/view/{id}) last activity: <t:{value}:R>"]
         description: str = ""
         value: str = ""
         if self.type == 0:
-            description = f"Players inactive more than {f"{self.req.days} days" if self.req.days != 1 else "one day"}:"
-            value = "\n".join([f"[{v["name"]}](https://simple-mmo.com/user/view/{v["id"]}) last activity: <t:{v["value"]}:R>" for v in data])
+            description = TEMPLATES[0]
+            value = "\n".join(TEMPLATES[2].format(name=v["name"],id=v["id"],value=v["value"]) for v in data)
         elif self.type == 1 and len(self.data[self.type]) != 0:
-            description = f"Players that have gained less than {self.req.levels} levels in {f"{self.req.days} days" if self.req.days != 1 else "one day"}:"
-            value = "\n".join([f"[{v["name"]}](https://simple-mmo.com/user/view/{v["id"]}): {v["value"]}" for v in data])
+            description = TEMPLATES[1].format(value=self.req.levels,category="levels")
+            value = "\n".join(TEMPLATES[2].format(name=v["name"],id=v["id"],value=v["value"]) for v in data)
         elif self.type == 2 and len(self.data[self.type]) != 0:
-            description = f"Players that have done less than {self.req.npc} npc kill in {f"{self.req.days} days" if self.req.days != 1 else "one day"}:"
-            value = "\n".join([f"[{v["name"]}](https://simple-mmo.com/user/view/{v["id"]}): {v["value"]}" for v in data])
+            description = TEMPLATES[1].format(value=self.req.npc,category="npc kills")
+            value = "\n".join(TEMPLATES[2].format(name=v["name"],id=v["id"],value=v["value"]) for v in data)
         elif self.type == 3 and len(self.data[self.type]) != 0:
-            description = f"Players that have done less than {self.req.pvp} pvp kill in {f"{self.req.days} days" if self.req.days != 1 else "one day"}:"
-            value = "\n".join([f"[{v["name"]}](https://simple-mmo.com/user/view/{v["id"]}): {v["value"]}" for v in data])
+            description = TEMPLATES[1].format(value=self.req.pvp,category="pvp kills")
+            value = "\n".join(TEMPLATES[2].format(name=v["name"],id=v["id"],value=v["value"]) for v in data)
         elif self.type == 4 and len(self.data[self.type]) != 0:
-            description = f"Players that have done less than {self.req.steps} steps in {f"{self.req.days} days" if self.req.days != 1 else "one day"}:"
-            value = "\n".join([f"[{v["name"]}](https://simple-mmo.com/user/view/{v["id"]}): {v["value"]}" for v in data])
+            description = TEMPLATES[1].format(value=self.req.steps,category="steps")
+            value = "\n".join(TEMPLATES[2].format(name=v["name"],id=v["id"],value=v["value"]) for v in data)
         else:
             description = "No requirement for this category"
             value = ""

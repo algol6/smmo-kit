@@ -13,7 +13,16 @@ from io import BytesIO
 from colorthief import ColorThief
 from PIL import Image
 from itertools import chain
+from urllib.parse import urlparse
 
+def is_valid_url(url):
+    try:
+        result = urlparse(url)
+        # Check if scheme (http/https) and netloc (domain) are present
+        return all([result.scheme, result.netloc])
+    except:
+        return False
+    
 def gen_is_empty(gen):
     try:
         first = next(gen)
@@ -49,11 +58,11 @@ async def get_war_guild(ctx:AutocompleteContext):
             for war in wars_list[str(guild_id)]["wars"]:
                 if war.guild_1["id"] == guild_id:
                     # guilds.append([war.guild_2["name"],war.guild_2["id"]])
-                    wars_list[str(guild_id)]["autocomplete"].append([f"{war.guild_2["name"]} - {war.guild_2["id"]}",war.guild_1["kills"]])
+                    wars_list[str(guild_id)]["autocomplete"].append([f"{war.guild_2['name']} - {war.guild_2['id']}",war.guild_1["kills"]])
                 else:
                     if war.guild_2["id"] == guild_id:
                         # guilds.append([war.guild_1["name"],war.guild_1["kills"]])
-                        wars_list[str(guild_id)]["autocomplete"].append([f"{war.guild_1["name"]} - {war.guild_1["id"]}",war.guild_2["kills"]])
+                        wars_list[str(guild_id)]["autocomplete"].append([f"{war.guild_1['name']} - {war.guild_1['id']}",war.guild_2["kills"]])
             # wars_list[str(guild_id)]["autocomplete"] = sorted(wars_list[str(guild_id)]["autocomplete"],key=lambda item: item[1],reverse=True)
         try:
             return sorted([i[0] for i in wars_list[str(guild_id)]["autocomplete"] if ctx.value.lower() in i[0].lower()]) 
@@ -155,18 +164,18 @@ async def make_wars_emb(guild, c, v, g2, war_xp,bo:bool|None = None) -> str:
                 
             if len(wars_list[str(guild.id)]) != 0:
                 msg = (f"{msg}*War that is about to **win***:\n"
-                        f"> War with more than **{MAX_KILLS-100}** kills: {var[0]} {f"(+ {format(earnings[0],",d")} gxp)" if war_xp else ""}\n"
-                        f"> War with more than **{MAX_KILLS-200}** kills: {var[1]} {f"(+ {format(earnings[1],",d")} gxp)" if war_xp else ""}\n"
-                        f"> War with more than **{MAX_KILLS-300}** kills: {var[2]} {f"(+ {format(earnings[2],",d")} gxp)" if war_xp else ""}\n"
-                        f"> War with more than **{MAX_KILLS-400}** kills: {var[3]} {f"(+ {format(earnings[3],",d")} gxp)" if war_xp else ""}\n"
-                        f"> War with more than **{MAX_KILLS-500}** kills: {var[4]} {f"(+ {format(earnings[4],",d")} gxp)" if war_xp else ""}\n"
-                        f"> War with more than **{MAX_KILLS-600}** kills: {var[5]} {f"(+ {format(earnings[5],",d")} gxp)" if war_xp else ""}\n"
+                        f"> War with more than **{MAX_KILLS-100}** kills: {var[0]} {f"(+ {earnings[0]:,} gxp)" if war_xp else ''}\n"
+                        f"> War with more than **{MAX_KILLS-200}** kills: {var[1]} {f"(+ {earnings[1]:,} gxp)" if war_xp else ''}\n"
+                        f"> War with more than **{MAX_KILLS-300}** kills: {var[2]} {f"(+ {earnings[2]:,} gxp)" if war_xp else ''}\n"
+                        f"> War with more than **{MAX_KILLS-400}** kills: {var[3]} {f"(+ {earnings[3]:,} gxp)" if war_xp else ''}\n"
+                        f"> War with more than **{MAX_KILLS-500}** kills: {var[4]} {f"(+ {earnings[4]:,} gxp)" if war_xp else ''}\n"
+                        f"> War with more than **{MAX_KILLS-600}** kills: {var[5]} {f"(+ {earnings[5]:,} gxp)" if war_xp else ''}\n"
                         f"> *Other war*: {var[6]}\n"
                         )
         else:
             msg = f"{msg}> *They have no wars ongoing*\n"
         if bo is not None:
-            msg = f"{msg}XP diff betweeen **{v.guild["name"]}-{guild.name}**: {format(xp - v.experience,",d")}\n"
+            msg = f"{msg}XP diff betweeen **{v.guild['name']}-{guild.name}**: {xp - v.experience:,}\n"
         return msg
     
 
@@ -279,7 +288,7 @@ async def make_gains_emb():
                     g.experience,
                     season_id,
                 )
-            msg = f"{msg}#{g.position} **[{g.guild['name']}](https://simple-mmo.com/guilds/view/{g.guild['id']})**: {format(g.experience, ',d')} (+*{format(g.experience - s.experience, ',d')}*)xp"
+            msg = f"{msg}#{g.position} **[{g.guild['name']}](https://simple-mmo.com/guilds/view/{g.guild['id']})**: {g.experience:,} (+*{g.experience - s.experience:,}*)xp"
             if g.position == s.position:
                 msg = f"{msg}\n"
             elif g.position < s.position:
@@ -291,7 +300,7 @@ async def make_gains_emb():
     emb.set_footer(text="Updated every 10 min")
     return emb
 
-async def get_channel_and_edit(client:Bot,channel_id:int,message_id:int=None,content=None,embed=None,view=None,delete_after=None):
+async def get_channel_and_edit(client:Bot,channel_id:int,message_id:int=None,content=MISSING,embed=MISSING,view=MISSING,delete_after=None):
     try:
         channel = await client.fetch_channel(channel_id)
         if not message_id:
@@ -299,7 +308,7 @@ async def get_channel_and_edit(client:Bot,channel_id:int,message_id:int=None,con
         message = await channel.fetch_message(message_id)
         await message.edit(content=content,embed=embed)
         if delete_after is not None:
-            await Database.insert_delmsg(message.id,channel.id,delete_after)
+            await Database.insert_delmsg(message.id,channel.id,delete_after+datetime.now().timestamp())
         return message
     except NotFound:
         logger.warning("Channel Id Invalid")
@@ -314,17 +323,17 @@ async def get_channel_and_edit(client:Bot,channel_id:int,message_id:int=None,con
         logger.warning("Unknown channel type was received from Discord")
         return True
 
-async def send(ctx,content:str=None,embed:Embed=None,view=None,file=MISSING,delete_after=None):
+async def send(ctx,content:str=MISSING,embed:Embed=MISSING,view=MISSING,file=MISSING,delete_after=None):
     try:
         if isinstance(ctx,ApplicationContext):
             msg = await ctx.followup.send(content=content,embed=embed,view=view,file=file)
             if delete_after is not None:
-                await Database.insert_delmsg(msg.id,ctx.channel_id,delete_after)
+                await Database.insert_delmsg(msg.id,ctx.channel_id,delete_after+datetime.now().timestamp())
             return msg
         elif isinstance(ctx,GuildChannel):
             msg = await ctx.send(content=content,embed=embed,view=view,file=file)
             if delete_after is not None:
-                await Database.insert_delmsg(msg.id,ctx.id,delete_after)
+                await Database.insert_delmsg(msg.id,ctx.id,delete_after+datetime.now().timestamp())
             return msg
     except Forbidden:
         logger.exception("Forbidden, i can't send messages there")
@@ -409,6 +418,9 @@ def get_dominant_color(image_url):
 class Embed(Embed):
     def __init__(self,*,colour=None,color=None,title=None,type="rich",url=None,description=None,timestamp=None,fields=None,author=None,footer=None,image=None,thumbnail=None):
         color = (Color.from_rgb(*get_dominant_color(thumbnail)) if thumbnail else Color.random()) if not color else color
+
+        if thumbnail is not None and not is_valid_url(thumbnail):
+            print(thumbnail)
         # color = Color.random() if color is None else color
         super().__init__(colour=colour,color=color,title=title,type=type,url=url,description=description,timestamp=timestamp,fields=fields,author=author,footer=footer,image=image,thumbnail=thumbnail)
         #self.set_footer(text="TEST MODE. Might get random error <-<")

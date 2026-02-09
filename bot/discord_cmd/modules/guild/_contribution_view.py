@@ -76,9 +76,9 @@ class ContributionView(discord.ui.View):
         colors:list[hex] = [0xc0392b,0xe67e22,0x2980b9,0xffe886,0xffec9d]
         desc = ""
         if self.tier == 3:
-            desc = f"Total tax collected: {sum(x["stats"] for x in self.data[self.tier]):,}"
+            desc = f"Total tax collected: {sum(x['stats'] for x in self.data[self.tier]):,}"
         elif self.tier == 4:
-            desc = f"Total Sanctuary contributed: {sum(x["stats"] for x in self.data[self.tier]):,}"
+            desc = f"Total Sanctuary contributed: {sum(x['stats'] for x in self.data[self.tier]):,}"
 
         emb = helpers.Embed(title=f"{tiers_name[self.tier]}",
                             color=colors[self.tier],
@@ -87,7 +87,7 @@ class ContributionView(discord.ui.View):
         until_item = self.current_page * self.sep
         from_item = until_item - self.sep
         
-        emb.add_field(name="", value="\n".join([f"#{i} [{v["name"]}](https://simple-mmo.com/user/view/{v["id"]}): {format(v["stats"],",d")}" for v,i in zip(self.data[self.tier][from_item:until_item],range(from_item + 1, until_item + 1))]))
+        emb.add_field(name="", value="\n".join([f"#{i} [{v['name']}](https://simple-mmo.com/user/view/{v['id']}): {v['stats']:,}" for v,i in zip(self.data[self.tier][from_item:until_item],range(from_item + 1, until_item + 1))]))
     
         emb.set_footer(text=f"Page {self.current_page}/{(len(self.data[self.tier])) // self.sep + 1}")
         return emb
