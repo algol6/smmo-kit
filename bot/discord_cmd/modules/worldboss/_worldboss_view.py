@@ -54,11 +54,11 @@ class WorldbossView(discord.ui.View):
                                     thumbnail=f"https://simple-mmo.com/img/sprites/{data.avatar}.png",
                                     color= 0xc0392b if bool(data.god) else 0x34495e)
         emb.add_field(name="Level", value=data.level, inline=False)
-        emb.add_field(name="HP", value=f"{f'{format(data.current_hp,",d")} :heart:' if data.enable_time > datetime.now().timestamp()-300 else "Dead :broken_heart:"}", inline=False)
+        emb.add_field(name="HP", value=f"{f'{data.current_hp:,} :heart:' if data.enable_time > datetime.now().timestamp()-300 else "Dead :broken_heart:"}", inline=False)
         emb.add_field(name="God", value=f"{":white_check_mark:" if bool(data.god) else ":x:"}", inline=False)
-        emb.add_field(name="Strength", value=f"{format(data.strength,",d")} :crossed_swords:", inline=True)
-        emb.add_field(name="Defence", value=f"{format(data.defence,",d")} :shield:", inline=True)
-        emb.add_field(name="Dexterity", value=f"{format(data.dexterity,",d")} :boot:", inline=True)
+        emb.add_field(name="Strength", value=f"{data.strength:,} :crossed_swords:", inline=True)
+        emb.add_field(name="Defence", value=f"{data.defence:,} :shield:", inline=True)
+        emb.add_field(name="Dexterity", value=f"{data.dexterity:,} :boot:", inline=True)
         emb.add_field(name="Active", value=f"<t:{data.enable_time}:R> (<t:{data.enable_time}>)", inline=False)
 
         emb.set_footer(text=f"Page {self.current_page + 1}/{len(self.data)}")

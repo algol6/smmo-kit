@@ -147,7 +147,7 @@ class Users(Cog):
             y=y,
             x="date",
             subplots=subplots,
-            title=f"{game_user.name}'s{" Gains" if gains else ""} graph",
+            title=f"{game_user.name}'s{' Gains' if gains else ''} graph",
             xlabel="Date",
             label = legen
         )
@@ -165,7 +165,7 @@ class Users(Cog):
         plt.close()
         file = File("./temp/graph.png", filename="graph.png")
         emb = helpers.Embed(
-            title=f"{game_user.name}'s{" Gains" if gains else ""} graph",
+            title=f"{game_user.name}'s{' Gains' if gains else ''} graph",
             description=f"From <t:{int(all_stats['time'].min())}> to <t:{int(all_stats['time'].max())}>",
         )
         emb.set_image(url="attachment://graph.png")
@@ -366,7 +366,7 @@ class Users(Cog):
 
         x2 = await SMMOApi.get_player_info(smmo_id)
         if x2 is not None and x1.verification == x2.motto.strip():
-            logger.info(f"User registered ({smmo_id}): {x2.name} lvl:{x2.level} {f"Guild: {x2.guild.name}" if x2.guild else "No Guild"}")
+            logger.info(f"User registered ({smmo_id}): {x2.name} lvl:{x2.level} {f'Guild: {x2.guild.name}' if x2.guild else 'No Guild'}")
             if x3 is not None:
                 await Database.delete_user(x3.discord_id)
             if not await Database.update_user(ctx.user.id, smmo_id):

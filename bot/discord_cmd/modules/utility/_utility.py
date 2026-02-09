@@ -134,14 +134,14 @@ class Utility(commands.Cog):
         m110 = 125 * (m110 if npc_to_kill > 125 else 0)
         
         emb = helpers.Embed(title="Battle arena calculator",
-                            description=f"**Level**: {format(player.level,",d")} -> {format(target_level if npc is None else current_level,",d")}\n**Rank**: {rank}\n**Boost**: {boost_percentage}%\n",
+                            description=f"**Level**: {player.level:,)} -> {target_level if npc is None else current_level:,}\n**Rank**: {rank}\n**Boost**: {boost_percentage}%\n",
                             color=color,
                             thumbnail=icon)
-        msg:str = (f"**NPC generated**: {format(npc_to_kill,",d")} :skull:\n"
-                    f"**Cost**: {format(money_needed, ",d")} :coin: [{format(int(money_needed*1.035), ",d")} :bank:]\n"
+        msg:str = (f"**NPC generated**: {npc_to_kill:,} :skull:\n"
+                    f"**Cost**: {money_needed:,} :coin: [{int(money_needed*1.035):,} :bank:]\n"
                     f"**Natural regen time**: {regen_time} :alarm_clock:\n"
-                    f"**Regen time w/ 125** :mushroom:: {helpers.formattime((max(0,npc_to_kill-m110))*5)} (Moe cost: {format((m110)*30000,",d")} :coin: | {format(m110,",d")} :mushroom:)\n"
-                    f"**Regen time w/ 180** :mushroom:: {helpers.formattime((max(0,npc_to_kill-m150))*5)} (Moe cost: {format((m150)*30000,",d")} :coin: | {format(m150,",d")} :mushroom:)\n"
+                    f"**Regen time w/ 125** :mushroom:: {helpers.formattime((max(0,npc_to_kill-m110))*5)} (Moe cost: {(m110)*30000:,} :coin: | {m110:,} :mushroom:)\n"
+                    f"**Regen time w/ 180** :mushroom:: {helpers.formattime((max(0,npc_to_kill-m150))*5)} (Moe cost: {(m150)*30000:,} :coin: | {m150:,} :mushroom:)\n"
                     )
         msg2:str = ""
         STR_TEMPLATE = ["With {ep} Ep, it's worth to refill {refill_ep} EP instead\n",
@@ -176,10 +176,10 @@ class Utility(commands.Cog):
                     break
             if len(msg2) != 0:
                 msg2 = f"**Tips**:\n{msg2}"
-            msg += f"**Refills ({format(energy_point,",d")} ep)** :repeat:: {format(refills,",d")} refills\n"
-            msg += f"**Refills Cost** (No sales): {format(diamon_needed[0],",d")} :gem:\n"
-            msg += f"**Refills Cost** (Sale): {format(diamon_needed[1],",d")} :gem:\n"
-            msg += f"**Refills Cost** (Double sale): {format(diamon_needed[2],",d")} :gem:\n"
+            msg += f"**Refills ({energy_point:,} ep)** :repeat:: {refills:,} refills\n"
+            msg += f"**Refills Cost** (No sales): {diamon_needed[0]:,} :gem:\n"
+            msg += f"**Refills Cost** (Sale): {diamon_needed[1]:,} :gem:\n"
+            msg += f"**Refills Cost** (Double sale): {diamon_needed[2]:,} :gem:\n"
         emb.add_field(name="",
                       value=msg+msg2)
         await helpers.send(ctx,embed=emb)
@@ -210,7 +210,7 @@ class Utility(commands.Cog):
 
         embed = helpers.Embed(
             title=f"Crafting from lvl {current_lvl} to {lvl_to_reach}",
-            description=f"**XP needed to reach lvl {lvl_to_reach}**: {format(xp_needed,",d")}")
+            description=f"**XP needed to reach lvl {lvl_to_reach}**: {xp_needed:,}")
 
         rarity = {"Common": (15,15),
                        "Uncommon":(20,20),
@@ -224,8 +224,8 @@ class Utility(commands.Cog):
         for name,values in rarity.items():
             craft_needed:int = ceil(xp_needed/values[0])
             embed.add_field(name=f"{name} mats",
-                            value=f"**Items to craft**: {format(craft_needed,",d")}\n"
-                                  f"**Mats needed**: {format(craft_needed*values[1],",d")}\n",
+                            value=f"**Items to craft**: {craft_needed:,}\n"
+                                  f"**Mats needed**: {craft_needed*values[1]:,}\n",
                             inline=False)
 
         await helpers.send(ctx,embed=embed)

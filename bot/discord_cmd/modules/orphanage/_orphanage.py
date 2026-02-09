@@ -60,8 +60,8 @@ class Orphanage(commands.Cog):
 
         for tier in orphanage_data:
             msg = f"**Active**: {":white_check_mark:" if tier.is_active else ":x:"}\n"
-            msg += f"**Status**: {format(tier.current_value,",d")}:coin:/{format(tier.target_value,",d")}:coin: (*{tier.percentage}%*)\n"
-            msg += f"**Remaining**: {format(tier.target_remaining,",d")}:coin:"
+            msg += f"**Status**: {tier.current_value:,}:coin:/{tier.target_value:,}:coin: (*{tier.percentage}%*)\n"
+            msg += f"**Remaining**: {tier.target_remaining:,}:coin:"
             emb.add_field(name=tier.tier.name,
                           value=msg, inline=False)
 

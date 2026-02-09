@@ -95,10 +95,10 @@ class EquipmentView(discord.ui.View):
             if k[0] is not None:
                 emb.add_field(name=k[0],
                               value=f"{format(k[1],",d") if k[0] != "Critical chance" else f"{"{:.1f}".format(k[1]/10)}%"}"
-                              f"{":crossed_swords:" if k[0] == "Strength" else ":shield:" if k[0] == "Defence" else ":exclamation:"}", 
+                              f"{':crossed_swords:' if k[0] == 'Strength' else ':shield:' if k[0] == 'Defence' else ':exclamation:'}", 
                               inline=True)
 
-        emb.add_field(name="Market value", value=f":coin:{format(item.market.low,",d")} - :coin:{format(item.market.high,",d")}", inline=False)
+        emb.add_field(name="Market value", value=f":coin:{item.market.low:,} - :coin:{item.market.high:,}", inline=False)
 
         return emb
     
