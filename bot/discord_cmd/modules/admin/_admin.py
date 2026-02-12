@@ -291,11 +291,11 @@ class Admin(Cog):
 
         req = Requirements(ctx.user_guild_id, days, levels, npc, pvp, steps)
 
-        guild_members = await SMMOApi.get_guild_members(req.guild_id)
+        is_empty,guild_members = helpers.gen_is_empty(await SMMOApi.get_guild_members(req.guild_id))
         safe_users = await Database.select_safe_user(req.guild_id)
 
-        if len(guild_members) == 0:
-            return await ctx.followup.send(content="No data found")
+        if is_empty:
+            return await ctx.followup.send(content="Error when getting members list")
 
         date = helpers.get_current_date_game() - timedelta(days=req.days)
         la: list = []
