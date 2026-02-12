@@ -418,7 +418,12 @@ def get_dominant_color(image_url):
 class Embed(Embed):
     def __init__(self,*,colour=None,color=None,title=None,type="rich",url=None,description=None,timestamp=None,fields=None,author=None,footer=None,image=None,thumbnail=None):
         color = (Color.from_rgb(*get_dominant_color(thumbnail)) if thumbnail else Color.random()) if not color else color
-
+        if thumbnail and '://' in thumbnail:
+            protocol, rest = thumbnail.split('://', 1)
+            rest = rest.replace('//', '/')
+            thumbnail = f'{protocol}://{rest}'
+            thumbnail = thumbnail.replace(" ", "%20")
+        # color = Color.random() if color is None else color
         if thumbnail is not None and not is_valid_url(thumbnail):
             print(thumbnail)
         # color = Color.random() if color is None else color
