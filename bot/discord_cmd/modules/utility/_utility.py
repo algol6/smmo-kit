@@ -134,7 +134,7 @@ class Utility(commands.Cog):
         m110 = 125 * (m110 if npc_to_kill > 125 else 0)
         
         emb = helpers.Embed(title="Battle arena calculator",
-                            description=f"**Level**: {player.level:,)} -> {target_level if npc is None else current_level:,}\n**Rank**: {rank}\n**Boost**: {boost_percentage}%\n",
+                            description=f"**Level**: {player.level:,} -> {target_level if npc is None else current_level:,}\n**Rank**: {rank}\n**Boost**: {boost_percentage}%\n",
                             color=color,
                             thumbnail=icon)
         msg:str = (f"**NPC generated**: {npc_to_kill:,} :skull:\n"
