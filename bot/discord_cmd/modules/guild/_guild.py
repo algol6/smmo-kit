@@ -366,67 +366,15 @@ class Guild(Cog):
     async def members_lb(self,ctx:ApplicationContext,timeframe:str="Daily",guild_id:int=None,reverse:bool=False) -> None:
         if guild_id is None:
             guild_id = ctx.user_guild_id
-        is_empty,guild_members = helpers.gen_is_empty(await SMMOApi.get_guild_members(guild_id))
-        guild = await SMMOApi.get_guild_info(guild_id)
         date = helpers.get_date_game(timeframe)
         to_date = helpers.get_current_date_game() 
         if timeframe != "Yesterday":
             to_date += timedelta(days=1)
-
-        if is_empty:
+        emb = await helpers.make_members_lb(guild_id,date.strftime("%d/%m/%Y"),to_date,reverse=reverse,live_stats=timeframe != "Yesterday")
+        if emb is None:
             return await helpers.send(ctx,content="No data found")
+        return await helpers.send(ctx,embed=emb)
         
-        season_id = await helpers.get_current_season_id()
-        guild_data = await Database.select_guild_stats(guild_id, date.year, date.month,date.day,season_id)
-
-        x:int = guild_data.experience if guild_data is not None else 0
- 
-        var:list[dict] = []
-        total:list[int] = [0,0,0,0]
-        
-        for m2 in guild_members:
-            m_s = await Database.select_user_stat(m2.user_id,date.year,date.month,date.day)
-            if m_s is None:
-                continue
-            if timeframe == "Yesterday":
-                m_stats = await Database.select_user_stat(m_s,to_date.year,to_date.month,to_date.day)
-                if m_stats is not None:
-                    m2.level = m_stats.level
-                    m2.steps = m_stats.steps
-                    m2.npc_kills = m_stats.npc_kills
-                    m2.user_kills = m_stats.user_kills
-            var.append({"id": m2.user_id,
-                        "levels": m2.level - m_s.level,
-                        "steps": m2.steps - m_s.steps,
-                        "npc_kills": m2.npc_kills - m_s.npc_kills,
-                        "user_kills": m2.user_kills - m_s.user_kills,
-                        "name": m2.name})
-            total[0] += m2.steps - m_s.steps
-            total[1] += m2.npc_kills - m_s.npc_kills
-            total[2] += m2.user_kills - m_s.user_kills
-            total[3] += m2.level - m_s.level
-            
-        emb = helpers.Embed(title=f"Members leaderboard",
-                            description=f"**Stats**: from <t:{int(date.timestamp())}> to <t:{int(to_date.timestamp())}>\n"
-                                        f"**Last update**: <t:{int(datetime.now().timestamp())}:R>\n"
-                                        f"**Guild**: {guild.name}\n"
-                                        f"**Exp**: {guild.current_season_exp:,} (+{guild.current_season_exp-x:,})",
-                            thumbnail=f"https://simple-mmo.com/img/icons/{guild.icon}")
-        emb.add_field(name=f"Steps: (Total: {total[0]:,})",
-                      value="\n".join(f"[{x['name']}](https://simple-mmo.com/user/view/{x['id']}): {x['steps']:,}" for x in sorted(var, key=lambda member: (member["steps"]),reverse=not reverse)[:5]),
-                      inline=False)
-        emb.add_field(name=f"NPC: (Total: {total[1]:,})",
-                      value="\n".join(f"[{x['name']}](https://simple-mmo.com/user/view/{x['id']}): {x['npc_kills']:,}" for x in sorted(var, key=lambda member: (member["npc_kills"]),reverse=not reverse)[:5]),
-                      inline=False)
-        emb.add_field(name=f"PVP: (Total: {total[2]:,})",
-                      value="\n".join(f"[{x['name']}](https://simple-mmo.com/user/view/{x['id']}): {x['user_kills']:,}" for x in sorted(var, key=lambda member: (member["user_kills"]),reverse=not reverse)[:5]),
-                      inline=False)
-        emb.add_field(name=f"Levels: (Total: {total[3]:,})",
-                      value="\n".join(f"[{x['name']}](https://simple-mmo.com/user/view/{x['id']}): {x['levels']:,}" for x in sorted(var, key=lambda member: (member["levels"]),reverse=not reverse)[:5]),
-                      inline=False)
-        await helpers.send(ctx,embed=emb)
-
-
     @subcommand("guild members")
     @slash_command(description="Show the stats of the guild")
     @permissions.require_linked_server()
