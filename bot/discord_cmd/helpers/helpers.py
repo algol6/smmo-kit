@@ -179,23 +179,30 @@ async def make_wars_emb(guild, c, v, g2, war_xp,bo:bool|None = None) -> str:
         return msg
     
 
-async def make_members_lb(data,current_date,task:bool=False):
-        guild = await SMMOApi.get_guild_info(data.guild_id)
+async def make_members_lb(g_id,lb_date,current_date,task:bool=False,reverse:bool=False,live_stats:bool=True):
+        guild = await SMMOApi.get_guild_info(g_id)
         if not guild:
             return None
-        date = get_date_game(data.date)
+        date = get_date_game(lb_date)
         season = await get_current_season()
-        guild_data = await Database.select_guild_stats(data.guild_id, date.year, date.month, date.day, season.id)
+        guild_data = await Database.select_guild_stats(g_id, date.year, date.month, date.day, season.id)
 
         x: int = guild_data.experience if guild_data else guild.current_season_exp
         total= [0, 0, 0, 0]
         var = []
-        is_empty,guild_members = gen_is_empty(await SMMOApi.get_guild_members(data.guild_id))
+        is_empty,guild_members = gen_is_empty(await SMMOApi.get_guild_members(g_id))
         if is_empty:
             return None
         for m2 in guild_members:
             m1 = await Database.select_user_stat(m2.user_id,date.year,date.month,date.day)
             if m1 is not None:
+                if not live_stats:
+                    m_stats = await Database.select_user_stat(m2.user_id,current_date.year,current_date.month,current_date.day)
+                    if m_stats is not None:
+                        m2.level = m_stats.level
+                        m2.steps = m_stats.steps
+                        m2.npc_kills = m_stats.npc_kills
+                        m2.user_kills = m_stats.user_kills
                 var.append(
                     {
                         "id": m1.smmo_id,
@@ -215,47 +222,24 @@ async def make_members_lb(data,current_date,task:bool=False):
             return None
         emb = Embed(
             title=f"Members leaderboard",
-            description=f"**Stats**: from <t:{int(current_date.timestamp())}> to <t:{int(current_date.timestamp() + 86400)}>\n"
-            f"**Last update**: <t:{int(datetime.now().timestamp())}:R>\n"
-            f"**Season**: {season.id}\n"
-            f"**Season Ending**: <t:{int(datetime.fromisoformat(season.ends_at[:-1]).timestamp())}>\n"
-            f"**Guild**: {guild.name}\n"
-            f"**Exp**: {format(guild.current_season_exp, ',d')} (+{format(guild.current_season_exp - x, ',d')})",
+            description=f"**Guild**: {guild.name}\n"
+                        f"**Stats**: from <t:{int(current_date.timestamp())}> - <t:{int(current_date.timestamp() + 86400)}>\n"
+                        f"**Last update**: <t:{int(datetime.now().timestamp())}:R>\n"
+                        f"**Exp**: {guild.current_season_exp:,} (+{guild.current_season_exp - x:,})\n"
+                        f"**Season**: {season.id} ending <t:{int(datetime.fromisoformat(season.ends_at[:-1]).timestamp())}:R> (<t:{int(datetime.fromisoformat(season.ends_at[:-1]).timestamp())}>)",
             thumbnail=f"https://simple-mmo.com/img/icons/{guild.icon}",
         )
+        category = {'steps':'Steps','npc_kills':'NPC','user_kills':'PVP','levels':'Levels'}
 
-        emb.add_field(
-            name=f"Steps: (Total: {format(total[0], ',d')})",
-            value="\n".join(
-                f"[{x['name']}](https://simple-mmo.com/user/view/{x['id']}): {format(x['steps'], ',d')}"
-                for x in sorted(var, key=lambda member: (-member["steps"]))[:5]
-            ),
-            inline=False,
-        )
-        emb.add_field(
-            name=f"NPC: (Total: {format(total[1], ',d')})",
-            value="\n".join(
-                f"[{x['name']}](https://simple-mmo.com/user/view/{x['id']}): {format(x['npc_kills'], ',d')}"
-                for x in sorted(var, key=lambda member: (-member["npc_kills"]))[:5]
-            ),
-            inline=False,
-        )
-        emb.add_field(
-            name=f"PVP: (Total: {format(total[2], ',d')})",
-            value="\n".join(
-                f"[{x['name']}](https://simple-mmo.com/user/view/{x['id']}): {format(x['user_kills'], ',d')}"
-                for x in sorted(var, key=lambda member: (-member["user_kills"]))[:5]
-            ),
-            inline=False,
-        )
-        emb.add_field(
-            name=f"Levels: (Total: {format(total[3], ',d')})",
-            value="\n".join(
-                f"[{x['name']}](https://simple-mmo.com/user/view/{x['id']}): {format(x['levels'], ',d')}"
-                for x in sorted(var, key=lambda member: (-member["levels"]))[:5]
-            ),
-            inline=False,
-        )
+        for i,val in enumerate(category.items()):
+                emb.add_field(
+                name=f"{val[1]} Total: {total[i]:,}:",
+                value="\n".join(
+                    f"[{x['name']}](https://simple-mmo.com/user/view/{x['id']}): {x[val[0]]:,}"
+                    for x in sorted(var, key=lambda member: -member[val[0]],reverse=reverse)[:5]
+                ),
+                inline=False,
+            )
         if task:
             emb.set_footer(text="Updated every 10 min")
         return emb
