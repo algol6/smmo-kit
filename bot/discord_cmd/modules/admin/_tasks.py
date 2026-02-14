@@ -87,10 +87,10 @@ class AdminTask(Cog):
                 message = await channel.send(embed=emb)
                 await Database.update_lb(channel_id=channel.id,message_id=message.id,date=helpers.get_current_date_game().strftime("%d/%m/%Y"))
             except NotFound:
-                logger.warning("Channel not found")
                 continue
             except Forbidden:
-                logger.warning("Channel Forbidden")
+                logger.info("Removing a gains lb cause: channel forbidden: %s",d.channel_id)
+                await Database.delete_lb(d.channel_id)
                 continue
             except HTTPException:
                 logger.warning("Internet fault")
