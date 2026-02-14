@@ -60,8 +60,7 @@ class WorldbossTasks(Cog):
         for d in data:
             if d.boss_id == wb_data.id:
                 continue
-            
-            if not await helpers.get_channel_and_edit(self.client,d.channel_id,delete_after=int(wb_data.enable_time - datetime.now().timestamp() + 120), view=WorldbossUrlButton()):
+            if not await helpers.get_channel_and_edit(self.client,d.channel_id,embed=emb,delete_after=int(wb_data.enable_time - datetime.now().timestamp() + 120), view=WorldbossUrlButton()):
                 logger.warning("Could not update wb message for: %s",d)
             await Database.update_wb_message(d.channel_id,wb_data.id)
             
