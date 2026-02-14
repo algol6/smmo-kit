@@ -105,7 +105,7 @@ class AdminTask(Cog):
         for d in data:
             if skip and current_date.strftime("%d/%m/%Y") != d.date:
                 continue
-            emb = await helpers.make_members_lb(d,current_date,task=True)
+            emb = await helpers.make_members_lb(d.guild_id,d.date,current_date,task=True)
             if not emb:
                 logger.warning("Could not make the embed for the guild %s",d.guild_id)
                 continue
