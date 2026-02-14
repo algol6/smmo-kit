@@ -95,71 +95,22 @@ async def make_wars_emb(guild, c, v, g2, war_xp,bo:bool|None = None) -> str:
             earnings: list[int] = [0,0,0,0,0,0]
             for w in wars_list[str(guild.id)]["wars"]:
                 if w.guild_1["id"] == guild.id:
-                    if w.guild_1["kills"] >= MAX_KILLS - 100:
-                        var[0] += 1
-                        if war_xp:
-                            guild_2 = await SMMOApi.get_guild_info(w.guild_2["id"])
-                            earnings[0] += max(int(guild_2.current_season_exp * MULTIPLIER), BASE_XP) + ((MAX_KILLS - w.guild_1["kills"]) * 50)
-                    elif w.guild_1["kills"] >= MAX_KILLS - 200:
-                        var[1] += 1
-                        if war_xp:
-                            guild_2 = await SMMOApi.get_guild_info(w.guild_2["id"])
-                            earnings[1] += max(int(guild_2.current_season_exp * MULTIPLIER), BASE_XP) + ((MAX_KILLS - w.guild_1["kills"]) * 50)
-                    elif w.guild_1["kills"] >= MAX_KILLS - 300:
-                        var[2] += 1
-                        if war_xp:
-                            guild_2 = await SMMOApi.get_guild_info(w.guild_2["id"])
-                            earnings[2] += max(int(guild_2.current_season_exp * MULTIPLIER), BASE_XP) + ((MAX_KILLS - w.guild_1["kills"]) * 50)
-                    elif w.guild_1["kills"] >= MAX_KILLS - 400:
-                        var[3] += 1
-                        if war_xp:
-                            guild_2 = await SMMOApi.get_guild_info(w.guild_2["id"])
-                            earnings[3] += max(int(guild_2.current_season_exp * MULTIPLIER), BASE_XP) + ((MAX_KILLS - w.guild_1["kills"]) * 50)
-                    elif w.guild_1["kills"] >= MAX_KILLS - 500:
-                        var[4] += 1
-                        if war_xp:
-                            guild_2 = await SMMOApi.get_guild_info(w.guild_2["id"])
-                            earnings[4] += max(int(guild_2.current_season_exp * MULTIPLIER), BASE_XP) + ((MAX_KILLS - w.guild_1["kills"]) * 50)
-                    elif w.guild_1["kills"] >= MAX_KILLS - 600:
-                        var[5] += 1
-                        if war_xp:
-                            guild_2 = await SMMOApi.get_guild_info(w.guild_2["id"])
-                            earnings[5] += max(int(guild_2.current_season_exp * MULTIPLIER), BASE_XP) + ((MAX_KILLS - w.guild_1["kills"]) * 50)
-                    else:
-                        var[6] += 1
-                else:
-                    if w.guild_2["id"] == guild.id:
-                        if w.guild_2["kills"] >= MAX_KILLS - 100:
-                            var[0] += 1
+                    for i in range(7):
+                        if w.guild_1["kills"] >= MAX_KILLS - (i+1)*100:
+                            var[i] += 1
+                            if war_xp:
+                                guild_2 = await SMMOApi.get_guild_info(w.guild_2["id"])
+                                earnings[i] += max(int(guild_2.current_season_exp * MULTIPLIER), BASE_XP) + ((MAX_KILLS - w.guild_1["kills"]) * 50)
+                        elif i == 6:
+                            var[6] += 1
+                elif w.guild_2["id"] == guild.id:
+                    for i in range(7):
+                        if w.guild_2["kills"] >= MAX_KILLS - (i+1)*100:
+                            var[i] += 1
                             if war_xp:
                                 guild_2 = await SMMOApi.get_guild_info(w.guild_1["id"])
-                                earnings[0] += max(int(guild_2.current_season_exp * MULTIPLIER), BASE_XP) + ((MAX_KILLS - w.guild_2["kills"]) * 50)
-                        elif w.guild_2["kills"] >= MAX_KILLS - 200:
-                            var[1] += 1
-                            if war_xp:
-                                guild_2 = await SMMOApi.get_guild_info(w.guild_1["id"])
-                                earnings[1] += max(int(guild_2.current_season_exp * MULTIPLIER), BASE_XP) + ((MAX_KILLS - w.guild_2["kills"]) * 50)
-                        elif w.guild_2["kills"] >= MAX_KILLS - 300:
-                            var[2] += 1
-                            if war_xp:
-                                guild_2 = await SMMOApi.get_guild_info(w.guild_1["id"])
-                                earnings[2] += max(int(guild_2.current_season_exp * MULTIPLIER), BASE_XP) + ((MAX_KILLS - w.guild_2["kills"]) * 50)
-                        elif w.guild_2["kills"] >= MAX_KILLS - 400:
-                            var[3] += 1
-                            if war_xp:
-                                guild_2 = await SMMOApi.get_guild_info(w.guild_1["id"])
-                                earnings[3] += max(int(guild_2.current_season_exp * MULTIPLIER), BASE_XP) + ((MAX_KILLS - w.guild_2["kills"]) * 50)
-                        elif w.guild_2["kills"] >= MAX_KILLS - 500:
-                            var[4] += 1
-                            if war_xp:
-                                guild_2 = await SMMOApi.get_guild_info(w.guild_1["id"])
-                                earnings[4] += max(int(guild_2.current_season_exp * MULTIPLIER), BASE_XP) + ((MAX_KILLS - w.guild_2["kills"]) * 50)
-                        elif w.guild_2["kills"] >= MAX_KILLS - 600:
-                            var[5] += 1
-                            if war_xp:
-                                guild_2 = await SMMOApi.get_guild_info(w.guild_1["id"])
-                                earnings[5] += max(int(guild_2.current_season_exp * MULTIPLIER), BASE_XP) + ((MAX_KILLS - w.guild_2["kills"]) * 50)
-                        else:
+                                earnings[i] += max(int(guild_2.current_season_exp * MULTIPLIER), BASE_XP) + ((MAX_KILLS - w.guild_2["kills"]) * 50)
+                        elif i == 6:
                             var[6] += 1
                 
             if len(wars_list[str(guild.id)]) != 0:
