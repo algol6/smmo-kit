@@ -61,7 +61,7 @@ class Extra(Cog):
         emb.add_field(name="Guild Linked", value=f"`{await Database.select_counter_guild_linked()}`", inline=True)
         emb.add_field(name="Servers", value=f"`{len(self.client.guilds)}`", inline=True)
         emb.add_field(name="Developer's discord", value="`algol6`", inline=True)
-        emb.add_field(name="Bot Version", value=f"`v2.0.3`", inline=True)
+        emb.add_field(name="Bot Version", value=f"`v2.0.4`", inline=True)
         emb.set_footer(text="Praise to DPS!")
         await helpers.send(ctx,embed=emb)
 
