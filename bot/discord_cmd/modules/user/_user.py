@@ -450,7 +450,7 @@ class Users(Cog):
     @command_utils.took_too_long()
     async def stats(self,ctx:ApplicationContext,user:Member=None,smmo_id:int=None,timeframe:str="Daily"):
         date = helpers.get_date_game(timeframe)
-        to_date = helpers.get_current_date_game() 
+        to_date = helpers.get_current_date_game()
         if timeframe != "Yesterday":
             to_date += timedelta(days=1)
         current_stats = await helpers.get_user(ctx, smmo_id, user)
