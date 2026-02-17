@@ -109,6 +109,9 @@ class UsersTask(Cog):
                 if str(smmo_id) in players_info:
                     row = all_data.loc[idx]
                     await Database.delete_best(smmo_id,label)
+                    if isinstance(row['time'],bytes):
+                        logger.info("User: %s",players_info[str(smmo_id)])
+                        continue
                     await Database.insert_best(
                         smmo_id, 
                         players_info[str(smmo_id)],
