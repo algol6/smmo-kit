@@ -376,7 +376,7 @@ class Guild(Cog):
         return await helpers.send(ctx,embed=emb)
         
     @subcommand("guild members")
-    @slash_command(description="Show the stats of the guild")
+    @slash_command(description="Show the stats of the guild, default: Yesterday")
     @permissions.require_linked_server()
     @guild_only()
     @option(name="timeframe",choices=["Daily","Past 7 Days","In-Game Weekly","Yesterday","Monthly","In-Game Monthly"])
@@ -397,7 +397,9 @@ class Guild(Cog):
             s_date = helpers.get_date_game(timeframe)
         
         if to_date is None:
-            e_date = helpers.get_current_date_game() + timedelta(days=1)
+            e_date = helpers.get_current_date_game()
+            if timeframe != "Yesterday":
+                e_date += timedelta(days=1)
         else:
             try:
                 e_date = datetime.strptime(to_date, "%d/%m/%Y")
@@ -408,7 +410,7 @@ class Guild(Cog):
         da = [[[],[],[],[]],[[],[],[],[]],[[],[],[],[]],[[],[],[],[]],[[],[],[],[]],[[],[],[],[]],[[],[],[],[]],[[],[],[],[]]]
         for m in members:
             d1 = await Database.select_user_stat(m.user_id,s_date.year,s_date.month,s_date.day)
-            if to_date is None:
+            if to_date is None and timeframe != "Yesterday":
                 d2 = m
             else:
                 d2 = await Database.select_user_stat(m.user_id,e_date.year,e_date.month,e_date.day)
