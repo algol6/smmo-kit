@@ -379,7 +379,7 @@ class Guild(Cog):
     @slash_command(description="Show the stats of the guild")
     @permissions.require_linked_server()
     @guild_only()
-    @option(name="timeframe",choices=["Past 7 Days","In-Game Weekly","Yesterday","Monthly","In-Game Monthly"])
+    @option(name="timeframe",choices=["Daily","Past 7 Days","In-Game Weekly","Yesterday","Monthly","In-Game Monthly"])
     @option(name="from_date", description="Write data in format dd/mm/yyyy. default 7 days ago")
     @option(name="to_date", description="Write data in format dd/mm/yyyy. default today.")
     @command_utils.auto_defer(False)
@@ -397,7 +397,7 @@ class Guild(Cog):
             s_date = helpers.get_date_game(timeframe)
         
         if to_date is None:
-            e_date = helpers.get_current_date_game()
+            e_date = helpers.get_current_date_game() + timedelta(days=1)
         else:
             try:
                 e_date = datetime.strptime(to_date, "%d/%m/%Y")
@@ -408,10 +408,12 @@ class Guild(Cog):
         da = [[[],[],[],[]],[[],[],[],[]],[[],[],[],[]],[[],[],[],[]],[[],[],[],[]],[[],[],[],[]],[[],[],[],[]],[[],[],[],[]]]
         for m in members:
             d1 = await Database.select_user_stat(m.user_id,s_date.year,s_date.month,s_date.day)
-            d2 = await Database.select_user_stat(m.user_id,e_date.year,e_date.month,e_date.day)
+            if to_date is None:
+                d2 = m
+            else:
+                d2 = await Database.select_user_stat(m.user_id,e_date.year,e_date.month,e_date.day)
             if d1 is None or d2 is None:
                 continue
-
             if m.level <= 25:
                 index = 1
             elif m.level <= 100:
@@ -440,7 +442,7 @@ class Guild(Cog):
             da[0][3].append({"name":m.name, "stats": d2.level - d1.level if d2.level - d1.level >= 0 else d2.level, "id":d1.smmo_id})
  
         if all(len(x)==0 for x in da):
-            return await ctx.followup.send(content="No data found.")
+            return await helpers.send(ctx,content="No data found.")
     
         for i in range(len(da)):
             for j in range(len(da[i])):
@@ -448,8 +450,8 @@ class Guild(Cog):
 
         advlb_view = AdvleaderboardView()
         advlb_view.data = da
-        advlb_view.end_data = int(e_date.replace(tzinfo=timezone.utc,hour=12,minute=0,second=0,microsecond=0).timestamp())
-        advlb_view.start_data = int(s_date.replace(tzinfo=timezone.utc,hour=12,minute=0,second=0,microsecond=0).timestamp())
+        advlb_view.end_data = int(e_date.timestamp())
+        advlb_view.start_data = int(s_date.timestamp())
         await advlb_view.send(ctx)
     
     @subcommand("guild")
