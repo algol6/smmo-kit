@@ -224,8 +224,8 @@ class Utility(commands.Cog):
         for name,values in rarity.items():
             craft_needed:int = ceil(xp_needed/values[0])
             embed.add_field(name=f"{name} mats",
-                            value=f"**Items to craft**: {craft_needed:,}\n"
-                                  f"**Mats needed**: {craft_needed*values[1]:,}\n",
+                            value=f"Items to craft: {craft_needed:,}\n"
+                                  f"Mats needed: {craft_needed*values[1]:,}\n",
                             inline=False)
 
         await helpers.send(ctx,embed=embed)
