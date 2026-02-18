@@ -388,6 +388,40 @@ class Users(Cog):
         await unverify_view.send(ctx)
 
     @subcommand("user")
+    @slash_command(description="Show all time stats")
+    @guild_only()
+    @permissions.require_linked_account()
+    @command_utils.auto_defer(False)
+    @command_utils.statistics("/user allstats")
+    @command_utils.took_too_long()
+    async def allstats(self,ctx:ApplicationContext,user:Member=None,smmo_id:int=None):
+        profile = await helpers.get_user(ctx, smmo_id, user)
+        if profile is None:
+            return
+        emb = helpers.Embed(
+            title=f"[{profile.id}]{profile.name}",
+            url=f"https://simple-mmo.com/user/view/{profile.id}",
+            thumbnail=f"https://simple-mmo.com{profile.avatar}",
+            description=f"Last update: <t:{int(datetime.now().timestamp())}:R>"
+        )
+
+        emb.add_field(name="", value=(
+            f"Levels: {profile.level:,}\n"
+            f"Steps: {profile.steps:,}\n\n"
+            f"NPC Killed: {profile.npc_kills:,}\n"
+            f"Boss Killed: {profile.boss_kills:,}\n\n"
+            f"PVP Kills: {profile.user_kills:,}\n"
+            f"Bounties Completed: {profile.bounties_completed:,}\n\n"
+            f"Quest Completed: {profile.quests_complete:,}\n"
+            f"Quest performed: {profile.quests_performed:,}\n\n"
+            f"Market Trades: {profile.market_trades:,}\n\n"
+            f"Chest opened: {profile.chests_opened:,}\n"
+            f"Dailies Unlocked: {profile.dailies_unlocked:,}"
+            )
+                      , inline=True)
+        await helpers.send(ctx,embed=emb)
+
+    @subcommand("user")
     @slash_command(description="Show linked smmo profile")
     @guild_only()
     @permissions.require_linked_account()
