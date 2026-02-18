@@ -1,12 +1,9 @@
-from discord import ApplicationContext, slash_command,guild_only,Bot
-from discord.ext import tasks
+from discord import ApplicationContext, slash_command,Bot
 from discord.ext.commands import Cog
 from pycord.multicog import subcommand
 
-from bot.api import SMMOApi
 from bot.database import Database
-from bot.discord_cmd.helpers import permissions, command_utils,helpers
-from bot.discord_cmd.helpers.logger import logger
+from bot.discord_cmd.helpers import command_utils,helpers
 
 
 class Extra(Cog):
@@ -61,7 +58,7 @@ class Extra(Cog):
         emb.add_field(name="Guild Linked", value=f"`{await Database.select_counter_guild_linked()}`", inline=True)
         emb.add_field(name="Servers", value=f"`{len(self.client.guilds)}`", inline=True)
         emb.add_field(name="Developer's discord", value="`algol6`", inline=True)
-        emb.add_field(name="Bot Version", value=f"`v2.0.5`", inline=True)
+        emb.add_field(name="Bot Version", value=f"`v2.0.6`", inline=True)
         emb.set_footer(text="Praise to DPS!")
         await helpers.send(ctx,embed=emb)
 
@@ -71,7 +68,7 @@ class Extra(Cog):
     @command_utils.statistics("/bot invite")
     @command_utils.took_too_long()
     async def invite(self, ctx: ApplicationContext):
-        emb = helpers.Embed(title="Invite Algol-Bot", description="Want to add this bot in your server?")
+        emb = helpers.Embed(title="Invite smmo-kit-Bot", description="Want to add this bot in your server?")
         emb.add_field(name="", value="You can use [THIS LINK](https://discord.com/oauth2/authorize?client_id=1232635599262056479&permissions=2147491856&integration_type=0&scope=bot) to invite this bot in your server.")
         await helpers.send(ctx,embed=emb)
 
