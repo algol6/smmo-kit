@@ -11,9 +11,6 @@ from bot.database.model import WorldBoss
 from bot.api import SMMOApi,ApiError
 from datetime import datetime, time
 from bot.discord_cmd.modules.worldboss._worldboss_url_button import WorldbossUrlButton
-from bot.discord_cmd.modules.worldboss._worldboss_view import WorldbossView
-
-
 
 class WorldbossTasks(Cog):
     def __init__(self, client) -> None:
