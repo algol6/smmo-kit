@@ -6,3 +6,4 @@ class Orphanage:
     role_id: int
     tier: int
     active: int
+    message_id: int
