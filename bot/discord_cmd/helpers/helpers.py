@@ -1,4 +1,4 @@
-from discord import Bot,ApplicationContext, Forbidden, HTTPException,InvalidData, NotFound, Forbidden, Embed, Member, Color,AutocompleteContext,MISSING
+from discord import Bot,ApplicationContext,Forbidden,TextChannel,HTTPException,InvalidData, NotFound, Forbidden, Embed, Member, Color,AutocompleteContext,MISSING
 from discord.abc import GuildChannel
 from datetime import datetime, timezone, timedelta
 
@@ -235,11 +235,13 @@ async def make_gains_emb():
     emb.set_footer(text="Updated every 10 min")
     return emb
 
-async def get_channel_and_edit(client:Bot,channel_id:int,message_id:int=None,content=MISSING,embed=MISSING,view=MISSING,delete_after=None):
+async def get_channel_and_edit(client:Bot,channel_id:int,message_id:int=None,content="",embed=None,view=None,delete_after=None):
     try:
-        channel = await client.fetch_channel(channel_id)
+        channel = await client.get_or_fetch(TextChannel,channel_id)
+        if channel is None:
+            return True
         if not message_id:
-            return await channel.send(content=content,embed=embed,delete_after=delete_after,view=view)
+            return await channel.send(content=content,embed=embed,view=view)
         message = await channel.fetch_message(message_id)
         await message.edit(content=content,embed=embed)
         if delete_after is not None:
@@ -247,18 +249,22 @@ async def get_channel_and_edit(client:Bot,channel_id:int,message_id:int=None,con
         return message
     except NotFound:
         logger.warning("Channel Id Invalid")
+        logger.exception("Not Found")
         return False
     except Forbidden:
         logger.warning("Channel forbidden")
+        logger.exception("Forbidden")
         return True
     except HTTPException:
         logger.warning("Failed to get the channel")
+        logger.exception("HttpException")
         return True
     except InvalidData:
         logger.warning("Unknown channel type was received from Discord")
+        logger.exception("InvalidData")
         return True
 
-async def send(ctx,content:str=MISSING,embed:Embed=MISSING,view=MISSING,file=MISSING,delete_after=None):
+async def send(ctx,content:str="",embed:Embed=MISSING,view=MISSING,file=MISSING,delete_after=None):
     try:
         if isinstance(ctx,ApplicationContext):
             msg = await ctx.followup.send(content=content,embed=embed,view=view,file=file)
@@ -279,7 +285,7 @@ async def send(ctx,content:str=MISSING,embed:Embed=MISSING,view=MISSING,file=MIS
     except NotFound:
         logger.exception("Not found: where i send the message?")
 
-async def edit(ctx,content:str=None,embed:Embed=None)->None:
+async def edit(ctx,content:str=None,embed:Embed=MISSING)->None:
     try:
         if isinstance(ctx,ApplicationContext):
             await ctx.followup.edit(content=content,embed=embed)
@@ -358,9 +364,6 @@ class Embed(Embed):
             rest = rest.replace('//', '/')
             thumbnail = f'{protocol}://{rest}'
             thumbnail = thumbnail.replace(" ", "%20")
-        # color = Color.random() if color is None else color
-        if thumbnail is not None and not is_valid_url(thumbnail):
-            print(thumbnail)
         # color = Color.random() if color is None else color
         super().__init__(colour=colour,color=color,title=title,type=type,url=url,description=description,timestamp=timestamp,fields=fields,author=author,footer=footer,image=image,thumbnail=thumbnail)
         #self.set_footer(text="TEST MODE. Might get random error <-<")
