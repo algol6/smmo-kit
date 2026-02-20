@@ -44,13 +44,18 @@ class AdminTask(Cog):
                 channel = await self.client.fetch_channel(msg.chn_id)
                 message = await channel.fetch_message(msg.msg_id)
                 await message.delete()
-                await Database.delete_delmsg(msg.msg_id,msg.chn_id)
             except NotFound:
+                logger.exception("cleanup")
                 continue
             except HTTPException:
+                logger.exception("cleanup")
                 continue
             except AttributeError:
+                logger.exception("cleanup")
                 continue
+            finally:
+                await Database.delete_delmsg(msg.msg_id,msg.chn_id)
+
 
         
     @loop(time=time(hour=12))
