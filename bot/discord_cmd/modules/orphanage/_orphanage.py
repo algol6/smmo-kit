@@ -17,13 +17,13 @@ class Orphanage(commands.Cog):
     @subcommand("admin orphanage")
     @slash_command(description="Setup orphanage ping. *different tier **can** have different role to ping*")
     @guild_only()
-    @option(name="tier", min_value=1, max_value=3)
+    @option(name="tier", choices=["All Tiers","Tier 1","Tier 2","Tier 3"])
     @option(name="channel", description="Define the channel where send the orphanage ping. default: current channel")
     @permissions.require_admin_or_staff()
     @command_utils.auto_defer()
     @command_utils.statistics("/admin orphanage")
     @command_utils.took_too_long()
-    async def setup(self,ctx:ApplicationContext,tier:int,role:Role,channel:TextChannel=None) -> None:
+    async def setup(self,ctx:ApplicationContext,role:Role,tier:str="All Tiers",channel:TextChannel=None) -> None:
         if channel is None:
             channel = ctx.channel
         try:
@@ -31,14 +31,22 @@ class Orphanage(commands.Cog):
             await ch.send(content="test message.", delete_after=1)
         except Forbidden:
             return await helpers.send(ctx,ontent="Bot doesn't have the perms to see/write the channel.")
-        if not await Database.insert_orphanage(channel.id, role.id, tier, active=0):
+        match tier:
+            case "Tier 1":
+                t = 1
+            case "Tier 2":
+                t = 2
+            case "Tier 3":
+                t = 3
+            case _:
+                t = 0
+        if not await Database.insert_orphanage(channel.id,None,role.id,t,active=0):
             return await helpers.send(ctx,content="This is already configured")
         await helpers.send(ctx,content=f"Orphanage tier {tier} set up.")
 
     @subcommand("admin orphanage")
     @slash_command(description="Remove orphanage ping from a channel.")
     @guild_only()
-    @option(name="tier", min_value=1, max_value=3)
     @option(name="channel", description="Define the channel where was set up the messages. default: current channel")
     @permissions.require_admin_or_staff()
     @command_utils.auto_defer()
@@ -46,7 +54,7 @@ class Orphanage(commands.Cog):
     async def remove(self,ctx:ApplicationContext,tier:int,channel:TextChannel=None) -> None:
         if channel is None:
             channel = ctx.channel
-        await Database.delete_orphanage(channel.id, tier)
+        await Database.delete_orphanage(channel.id)
         await helpers.send(ctx,content=f"Orphanage notify removed.")
     
 
