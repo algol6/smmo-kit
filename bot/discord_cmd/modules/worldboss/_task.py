@@ -1,14 +1,13 @@
     
-from discord import ApplicationContext, slash_command,guild_only,option,TextChannel,Role,Cog
+from discord import Cog
 from discord.ext.tasks import loop
 
-from pycord.multicog import subcommand
 
-from bot.discord_cmd.helpers import permissions, command_utils, helpers,logger
+from bot.discord_cmd.helpers import helpers
 from bot.discord_cmd.helpers.logger import logger
 from bot.database import Database
 from bot.database.model import WorldBoss
-from bot.api import SMMOApi,ApiError
+from bot.api import SMMOApi
 from datetime import datetime, time
 from bot.discord_cmd.modules.worldboss._worldboss_url_button import WorldbossUrlButton
 
