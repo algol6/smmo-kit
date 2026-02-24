@@ -6,9 +6,6 @@ from pycord.multicog import subcommand
 from bot.discord_cmd.helpers import permissions, command_utils, helpers
 from bot.discord_cmd.helpers.logger import logger
 from bot.database import Database
-from bot.database.model import WorldBoss
-from datetime import datetime, time
-from bot.discord_cmd.modules.worldboss._worldboss_url_button import WorldbossUrlButton
 from bot.discord_cmd.modules.worldboss._worldboss_view import WorldbossView
 from bot.discord_cmd.modules.worldboss._task import WorldbossTasks
 
