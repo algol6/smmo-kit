@@ -4,22 +4,21 @@ from discord import ApplicationContext, Member
 from bot.discord_cmd.helpers.logger import logger
 from bot.api import SMMOApi
 from bot.database import Database
-from time import time
 
 async def is_admin_or_staff(ctx: ApplicationContext) -> bool:
     if isinstance(ctx.author, Member): 
         if ctx.author.guild_permissions.administrator:
             return True,None
-        if ctx.author.guild_permissions.manage_channels:
+        elif ctx.author.guild_permissions.manage_channels:
             return True,None
-        if ctx.author.guild_permissions.manage_guild:
+        elif ctx.author.guild_permissions.manage_guild:
             return True,None
-        if ctx.author.guild_permissions.manage_roles:
+        elif ctx.author.guild_permissions.manage_roles:
             return True,None
-    roles_id = set(y.id for y in ctx.user.roles)
-    for x in await Database.select_staff(await Database.select_server(ctx.guild_id)):
-        if x.role_id in roles_id:
-            return True,None
+        roles_id = set(y.id for y in ctx.user.roles)
+        for x in await Database.select_staff(await Database.select_server(ctx.guild_id)):
+            if x.role_id in roles_id:
+                return True,None
     user = await Database.select_user_discord(ctx.user.id)
     if user is not None and user.smmo_id is not None:
         profile = await SMMOApi.get_player_info(user.smmo_id)
