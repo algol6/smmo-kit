@@ -133,6 +133,7 @@ async def make_wars_emb(guild, c, v, g2, war_xp,bo:bool|None = None) -> str:
 async def make_members_lb(g_id,lb_date,current_date,task:bool=False,reverse:bool=False,live_stats:bool=True):
         guild = await SMMOApi.get_guild_info(g_id)
         if not guild:
+            logger.warning("Could not retrive guild data from API")
             return None
         date = get_date_game(lb_date)
         season = await get_current_season()
@@ -140,10 +141,11 @@ async def make_members_lb(g_id,lb_date,current_date,task:bool=False,reverse:bool
 
         x: int = guild_data.experience if guild_data else guild.current_season_exp
         total= [0, 0, 0, 0]
-        var = []
         is_empty,guild_members = gen_is_empty(await SMMOApi.get_guild_members(g_id))
         if is_empty:
+            logger.warning("Could not retrive guild members data from API")
             return None
+        var = []
         for m2 in guild_members:
             m1 = await Database.select_user_stat(m2.user_id,date.year,date.month,date.day)
             if m1 is not None:
@@ -170,6 +172,7 @@ async def make_members_lb(g_id,lb_date,current_date,task:bool=False,reverse:bool
                 total[3] += m2.level - m1.level
         
         if len(var) == 0:
+            logger.warning("var empty: member data could not be processed")
             return None
         emb = Embed(
             title=f"Members leaderboard",
@@ -245,15 +248,14 @@ async def get_channel_and_edit(client:Bot,channel_id:int,message_id:int=None,con
         message = await channel.fetch_message(message_id)
         await message.edit(content=content,embed=embed)
         if delete_after is not None:
-            await Database.insert_delmsg(message.id,channel.id,delete_after+datetime.now().timestamp())
+            print(message)
+            await Database.insert_delmsg(message.id,channel.id,int(delete_after+datetime.now().timestamp()))
         return message
     except NotFound:
         logger.warning("Channel Id Invalid")
-        logger.exception("Not Found")
         return False
     except Forbidden:
         logger.warning("Channel forbidden")
-        logger.exception("Forbidden")
         return True
     except HTTPException:
         logger.warning("Failed to get the channel")
@@ -269,12 +271,14 @@ async def send(ctx,content:str="",embed:Embed=MISSING,view=MISSING,file=MISSING,
         if isinstance(ctx,ApplicationContext):
             msg = await ctx.followup.send(content=content,embed=embed,view=view,file=file)
             if delete_after is not None:
-                await Database.insert_delmsg(msg.id,ctx.channel_id,delete_after+datetime.now().timestamp())
+                print(msg)
+                await Database.insert_delmsg(msg.id,ctx.channel_id,int(delete_after+datetime.now().timestamp()))
             return msg
         elif isinstance(ctx,GuildChannel):
+            print(ctx)
             msg = await ctx.send(content=content,embed=embed,view=view,file=file)
             if delete_after is not None:
-                await Database.insert_delmsg(msg.id,ctx.id,delete_after+datetime.now().timestamp())
+                await Database.insert_delmsg(msg.id,ctx.id,int(delete_after+datetime.now().timestamp()))
             return msg
     except Forbidden:
         logger.exception("Forbidden, i can't send messages there")
