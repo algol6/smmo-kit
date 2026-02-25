@@ -85,13 +85,19 @@ class AdminTask(Cog):
         await self.update_leaderboards(False)
         await sleep(120) # to have the date to the next day for helpers.get_current_date_game()
         data = await Database.select_all_lb()
+        str_date = helpers.get_current_date_game().strftime("%d/%m/%Y")
         for d in data:
+            if d.date == str_date:
+                continue
             try:
                 channel = await self.client.fetch_channel(d.channel_id)
                 emb = helpers.Embed(title="Loading leaderboard...\n*Now it should load 30/40min after the server reset*")
                 message = await channel.send(embed=emb)
                 await Database.update_lb(channel_id=channel.id,message_id=message.id,date=helpers.get_current_date_game().strftime("%d/%m/%Y"))
             except NotFound:
+                logger.info("Channel not found (create_new_daily_leaderboard)")
+                logger.info("Removing a gains lb cause: channel not found: %s",d.channel_id)
+                await Database.delete_lb(d.channel_id)
                 continue
             except Forbidden:
                 logger.info("Removing a gains lb cause: channel forbidden: %s",d.channel_id)
@@ -107,8 +113,10 @@ class AdminTask(Cog):
         if skip and datetime.now(tz=timezone.utc).hour == 12 and datetime.now(tz=timezone.utc).minute <= 30:
             return
         data = await Database.select_all_lb()
+        str_date = current_date.strftime("%d/%m/%Y")
         for d in data:
-            if skip and current_date.strftime("%d/%m/%Y") != d.date:
+            if skip and str_date != d.date:
+                await self.create_new_daily_leaderboard()
                 continue
             emb = await helpers.make_members_lb(d.guild_id,d.date,current_date,task=True)
             if not emb:
@@ -124,7 +132,7 @@ class AdminTask(Cog):
         code = await Database.select_valut(date.year, date.month, date.day)
         if code is None:
             return
-        emb: helpers.Embed = helpers.Embed(title="Daily Vault Code", description='Go to "Town > Vault" to use the code')
+        emb = helpers.Embed(title="Daily Vault Code", description='Go to "Town > Vault" to use the code')
 
         match len(str(code.code)):
             case 9:
