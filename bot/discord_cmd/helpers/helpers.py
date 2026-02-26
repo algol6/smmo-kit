@@ -256,7 +256,7 @@ async def get_channel_and_edit(client:Bot,channel_id:int,message_id:int=None,con
         return False
     except Forbidden:
         logger.warning("Channel forbidden")
-        return True
+        return False
     except HTTPException:
         logger.warning("Failed to get the channel")
         logger.exception("HttpException")
