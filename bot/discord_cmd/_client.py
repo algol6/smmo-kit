@@ -41,7 +41,7 @@ async def on_application_command_error(ctx: ApplicationContext, error: DiscordEx
         except:
             guild = f"[{ctx.guild.name} #{ctx.channel}]"
 
-    logger.error("[/%s] from %s:\n%s",ctx.command.qualified_name,guild,error)
+    logger.error("COMMAND [/%s] from %s:\n%s",ctx.command.qualified_name,guild,error)
     if isinstance(error, errors.NotFound):
         logger.warning("Error 'discord.errors.NotFound'")
         return await helpers.send(ctx,content=f"Error with discord, Try again.")
