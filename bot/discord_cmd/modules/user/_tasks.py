@@ -56,7 +56,6 @@ class UsersTask(Cog):
                 continue
             date = datetime.now(tz=timezone.utc)
             date_timestamp = date.timestamp()
-
             if user.smmo_id in banned:
                 date2 = date - timedelta(days=1)
                 data = await Database.select_user_stat(user.smmo_id, date2.year, date2.month, date2.day)
