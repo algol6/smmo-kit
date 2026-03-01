@@ -10,7 +10,6 @@ from bot.discord_cmd.helpers import permissions, command_utils, helpers
 from bot.discord_cmd.helpers.logger import logger
 from bot.database import Database
 from bot.api import SMMOApi
-from bot.database.model import GuildStats
 
 class AdminTask(Cog):
     def __init__(self, client) -> None:
@@ -24,6 +23,11 @@ class AdminTask(Cog):
         self.check_valut_code.start()
         self.activity_check.start()
         self.cleanup_msg.start()
+        self.update_season.start()
+        
+        #import asyncio
+        #asyncio.run(self.create_new_daily_leaderboard())
+        #asyncio.run(self.set_new_gain_lb())
 
     def cog_unload(self) -> None:
         self.check_montly_reward.cancel()
@@ -35,6 +39,34 @@ class AdminTask(Cog):
         self.check_valut_code.cancel()
         self.activity_check.cancel()
         self.cleanup_msg.cancel()
+        self.update_season.cancel()
+
+    @loop(time=time(hour=12))
+    async def update_season(self):
+        curr_season = await Database.select_last_season()
+        end_time:datetime = datetime.fromisoformat(curr_season.ends_at[:-1])
+        print(end_time)
+        print(end_time>datetime.now() + timedelta(days=1))
+        if end_time > datetime.now() + timedelta(days=1):
+            return
+        self.update_season.change_interval(time=time(hour=18))
+        self.update_guilds_end_season.start()
+        new_seasons = tuple(await SMMOApi.get_guild_season())
+        if datetime.fromisoformat(new_seasons[-1].starts_at[:-1]) < datetime.now():
+            return
+        await Database.insert_season(new_seasons[-1].id,new_seasons[-1].name,new_seasons[-1].starts_at,new_seasons[-1].ends_at)
+        self.update_season.change_interval(time=time(hour=12))
+
+    @loop(time=time(hour=18,minute=29))
+    async def update_guilds_end_season(self):
+        from bot.discord_cmd.modules.guild._tasks import GuildTask
+        await GuildTask.check_stats(end_season=True)
+        await self.set_new_gain_lb()
+        from asyncio import sleep
+        sleep(120)
+        await GuildTask.check_stats(start_season=True)
+        self.update_guilds_end_season.cancel()
+
 
     @loop(minutes=5)
     async def cleanup_msg(self):
