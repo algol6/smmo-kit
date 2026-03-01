@@ -30,7 +30,7 @@ class GuildTask(Cog):
     @loop(time=time(hour=12))
     async def check_stats(self):
         logger.info("Started saving guild stats.")
-        season_id:int = await helpers.get_current_season_id()
+        season_id:int = await Database.select_last_season_id()
         current_guild = await SMMOApi.get_guild_season_leaderboard(season_id)
         id = set()
         guilds: list[int] = await Database.select_all_server_guild()

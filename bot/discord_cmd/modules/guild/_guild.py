@@ -161,7 +161,7 @@ class Guild(Cog):
     @command_utils.statistics("/guild lb")
     @command_utils.took_too_long()
     async def lb(self,ctx:ApplicationContext,number:int=10) -> None:
-        season_id = await helpers.get_current_season_id()
+        season_id = await Database.select_last_season_id()
         is_empty,season_lb = helpers.gen_is_empty(await SMMOApi.get_guild_season_leaderboard(season_id))
         if is_empty:
             return await helpers.send(ctx,"No data found. try again later")
@@ -227,7 +227,7 @@ class Guild(Cog):
     async def wars(self, ctx: ApplicationContext, guild_id: int = None, war_xp:bool = False) -> None:
         if guild_id is None:
             guild_id = ctx.user_guild_id
-        season_id: int = await helpers.get_current_season_id()
+        season_id: int = await Database.select_last_season_id()
         season_lb = await SMMOApi.get_guild_season_leaderboard(season_id)
 
         embed = helpers.Embed(title="Guild Leaderboard Stats")
@@ -272,7 +272,7 @@ class Guild(Cog):
     @command_utils.statistics("/guild gains")
     @command_utils.took_too_long()
     async def gains(self, ctx: ApplicationContext, timeframe: str = "Daily") -> None:
-        season = await helpers.get_current_season()
+        season = await Database.select_last_season()
         is_empty,season_lb = helpers.gen_is_empty(await SMMOApi.get_guild_season_leaderboard(season.id))
         if is_empty:
             return await helpers.send(ctx,content="No data. Season just started try after server reset")

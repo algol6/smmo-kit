@@ -25,7 +25,7 @@ class UsersTask(Cog):
         ids = set()
         guild_ids = set()
         banned = await Database.select_banned()
-        current_guild: list = chain(await SMMOApi.get_guild_season_leaderboard(await helpers.get_current_season_id()),await Database.select_all_server_guild())
+        current_guild: list = chain(await SMMOApi.get_guild_season_leaderboard(await Database.select_last_season_id()),await Database.select_all_server_guild())
 
         players_info = {}
         for g in current_guild:
