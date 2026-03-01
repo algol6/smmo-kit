@@ -1,4 +1,4 @@
-from discord import slash_command, ApplicationContext,AutocompleteContext, Bot, guild_only, option, Role, TextChannel
+from discord import slash_command, ApplicationContext, Bot, guild_only, option, Role, TextChannel
 from discord.ext.commands import Cog
 from pycord.multicog import subcommand
 
@@ -134,14 +134,14 @@ class Guild(Cog):
         guild_member = await SMMOApi.get_guild_members(ctx.user_guild_id)
         guild_info = await SMMOApi.get_guild_info(ctx.user_guild_id)
         x:list[str] = []
-        x:dict = {"Leader":[],"Co-leader":[],"Officer":[],"Member":[]}
+        x:dict = {"Leader":"","Co-leader":[],"Officer":[],"Member":[]}
         for member in guild_member:
             bot_user = await Database.select_user_smmoid(member.user_id)
             if member.position == "Leader":
-                x["Leader"].append(f"[{member.name}](https://simple-mmo.com/user/view/{member.user_id}) (**Lvl**:{member.level:,}){f" <@{bot_user.discord_id}>" if bot_user is not None else ""}")
-            if member.position == "Co Leader":
+                x["Leader"] = f"[{member.name}](https://simple-mmo.com/user/view/{member.user_id}) (**Lvl**:{member.level:,}){f" <@{bot_user.discord_id}>" if bot_user is not None else ""}"
+            elif member.position == "Co Leader":
                 x["Co-leader"].append(f"[{member.name}](https://simple-mmo.com/user/view/{member.user_id}) (**Lvl**:{member.level:,}){f" <@{bot_user.discord_id}>" if bot_user is not None else ""}")
-            if member.position == "Officer":
+            elif member.position == "Officer":
                 x["Officer"].append(f"[{member.name}](https://simple-mmo.com/user/view/{member.user_id}) (**Lvl**:{member.level:,}){f" <@{bot_user.discord_id}>" if bot_user is not None else ""}")
 
             x["Member"].append(f"[{member.name}](https://simple-mmo.com/user/view/{member.user_id}) (**Lvl**:{member.level:,}){f" <@{bot_user.discord_id}>" if bot_user is not None else ""}")
