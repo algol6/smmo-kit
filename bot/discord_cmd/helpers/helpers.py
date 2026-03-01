@@ -244,11 +244,13 @@ async def get_channel_and_edit(client:Bot,channel_id:int,message_id:int=None,con
         if channel is None:
             return True
         if not message_id:
-            return await channel.send(content=content,embed=embed,view=view)
-        message = await channel.fetch_message(message_id)
-        await message.edit(content=content,embed=embed)
+            message = await channel.send(content=content,embed=embed,view=view)
+        else:
+            message = await channel.fetch_message(message_id)
+            await message.edit(content=content,embed=embed)
         if delete_after is not None:
             print(message)
+            print(content)
             await Database.insert_delmsg(message.id,channel.id,int(delete_after+datetime.now().timestamp()))
         return message
     except NotFound:
@@ -340,9 +342,11 @@ async def get_user(ctx:ApplicationContext|None,smmo_id:int|None=None,user:Member
         u_id = user.id if user else ctx.user.id
         linked:bool = True
         bot_user = await Database.select_user_discord(u_id)
-        if not bot_user:
+        if bot_user is None:
             linked = False
             logger.info("User not linked")
+            await send(ctx,"User not linked")
+            return None
         smmo_id = smmo_id if smmo_id else bot_user.smmo_id
 
     game_user = await SMMOApi.get_player_info(smmo_id)
