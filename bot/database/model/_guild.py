@@ -61,3 +61,10 @@ class Task:
     channel_id: int
     guild_id: int
     role_id: int
+
+@dataclass
+class Season:
+    id: int
+    name: str
+    starts_at: str
+    ends_at: str
