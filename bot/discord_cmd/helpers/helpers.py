@@ -32,22 +32,6 @@ def gen_is_empty(gen):
         return True,None
     return False,chain([first],gen)
 
-
-async def get_current_season():
-    # TODO: save season info into db
-    res = tuple(await SMMOApi.get_guild_season())
-    if datetime.fromisoformat(res[-1].starts_at[:-1]).timestamp() > datetime.now().timestamp():
-        return res[-2]
-    return res[-1]
-
-
-async def get_current_season_id() -> int:
-    # TODO: save season info into db
-    res = tuple(await SMMOApi.get_guild_season())
-    if datetime.fromisoformat(res[-1].starts_at[:-1]).timestamp() > datetime.now().timestamp():
-        return res[-2].id
-    return res[-1].id
-
 async def get_war_guild(ctx:AutocompleteContext):
         guild_id = await Database.select_server(ctx.interaction.guild_id)
         global wars_list
@@ -136,7 +120,7 @@ async def make_members_lb(g_id,lb_date,current_date,task:bool=False,reverse:bool
             logger.warning("Could not retrive guild data from API")
             return None
         date = get_date_game(lb_date)
-        season = await get_current_season()
+        season = await Database.select_last_season()
         guild_data = await Database.select_guild_stats(g_id, date.year, date.month, date.day, season.id)
 
         x: int = guild_data.experience if guild_data else guild.current_season_exp
@@ -199,7 +183,7 @@ async def make_members_lb(g_id,lb_date,current_date,task:bool=False,reverse:bool
         return emb
 
 async def make_gains_emb():
-    season_id = await get_current_season_id()
+    season_id = await Database.select_last_season_id()
     is_empty,season_lb = gen_is_empty(await SMMOApi.get_guild_season_leaderboard(season_id))
     if is_empty:
             return
