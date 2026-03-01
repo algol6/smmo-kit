@@ -164,7 +164,7 @@ async def make_members_lb(g_id,lb_date,current_date,task:bool=False,reverse:bool
                         f"**Stats**: from <t:{int(current_date.timestamp())}> - <t:{int(current_date.timestamp() + 86400)}>\n"
                         f"**Last update**: <t:{int(datetime.now().timestamp())}:R>\n"
                         f"**Exp**: {guild.current_season_exp:,} (+{guild.current_season_exp - x:,})\n"
-                        f"**Season**: {season.id} ending <t:{int(datetime.fromisoformat(season.ends_at[:-1]).timestamp())}:R> (<t:{int(datetime.fromisoformat(season.ends_at[:-1]).timestamp())}>)",
+                        f"**{season.name}** ending <t:{int(datetime.fromisoformat(season.ends_at[:-1]).timestamp())}:R> (<t:{int(datetime.fromisoformat(season.ends_at[:-1]).timestamp())}>)",
             thumbnail=f"https://simple-mmo.com/img/icons/{guild.icon}",
         )
         category = {'steps':'Steps','npc_kills':'NPC','user_kills':'PVP','levels':'Levels'}
@@ -183,14 +183,17 @@ async def make_members_lb(g_id,lb_date,current_date,task:bool=False,reverse:bool
         return emb
 
 async def make_gains_emb():
-    season_id = await Database.select_last_season_id()
-    is_empty,season_lb = gen_is_empty(await SMMOApi.get_guild_season_leaderboard(season_id))
+    season = await Database.select_last_season()
+    is_empty,season_lb = gen_is_empty(await SMMOApi.get_guild_season_leaderboard(season.id))
     if is_empty:
             return
     emb = Embed(
             title="Daily guild gains",
             description=f"**Stats**: from <t:{int((get_current_date_game()).timestamp())}>\n"
-            f"**Last update**: <t:{int(datetime.now().timestamp())}:R>\n",
+                        f"**{season.name}**\n"
+                        f"**Season Start**: <t:{int(datetime.fromisoformat(season.starts_at[:-1]).timestamp())}:R> (<t:{int(datetime.fromisoformat(season.starts_at[:-1]).timestamp())}>)\n"
+                        f"**Season End**: <t:{int(datetime.fromisoformat(season.ends_at[:-1]).timestamp())}:R> (<t:{int(datetime.fromisoformat(season.ends_at[:-1]).timestamp())}>)\n"
+                        f"**Last update**: <t:{int(datetime.now().timestamp())}:R>",
         )
     msg: str = ""
     title = ("Celestial", "Legendary", "Epic", "Elite", "Rare")
@@ -198,7 +201,7 @@ async def make_gains_emb():
     for count in range(5):
         for _ in range(5):
             g = next(season_lb)
-            s = await Database.select_guild_stats(g.guild["id"],date.year,date.month,date.day,season_id)
+            s = await Database.select_guild_stats(g.guild["id"],date.year,date.month,date.day,season.id)
             if s is None:
                 s = GuildStats(
                     date.year,
@@ -208,7 +211,7 @@ async def make_gains_emb():
                     g.guild["id"],
                     g.position,
                     g.experience,
-                    season_id,
+                    season.id,
                 )
             msg = f"{msg}#{g.position} **[{g.guild['name']}](https://simple-mmo.com/guilds/view/{g.guild['id']})**: {g.experience:,} (+*{g.experience - s.experience:,}*)xp"
             if g.position == s.position:
