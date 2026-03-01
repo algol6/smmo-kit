@@ -12,7 +12,6 @@ from bot.database import Database
 from bot.discord_cmd.helpers import helpers
 from bot.discord_cmd.helpers.logger import logger
 from bot.api._api import ApiError
-from asyncio import run
 
 from requests import HTTPError
 
@@ -53,7 +52,6 @@ async def on_application_command_error(ctx: ApplicationContext, error: DiscordEx
 
 def main():
     try:
-        #run(Database.create_table())
         logger.info("Starting Bot. Goodmorning!")
         client.run(getenv("DISCORD_TOKEN"))
     except KeyboardInterrupt:
