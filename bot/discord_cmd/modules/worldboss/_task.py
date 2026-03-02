@@ -47,7 +47,7 @@ class WorldbossTasks(Cog):
         emb = helpers.Embed(title=wb_data.name,url="https://simple-mmo.com/worldboss/all",thumbnail=f"https://simple-mmo.com/img/sprites/{wb_data.avatar}.png")
         emb.add_field(name="Level", value=wb_data.level, inline=False)
         emb.add_field(name="HP", value=f"{wb_data.current_hp:,} :heart:", inline=False)
-        emb.add_field(name="God", value=f"{":white_check_mark:" if bool(wb_data.god) else ":x:"}", inline=False)
+        emb.add_field(name="God", value=":white_check_mark:" if bool(wb_data.god) else ":x:", inline=False)
         emb.add_field(name="Strength", value=f"{wb_data.strength:,} :crossed_swords:", inline=True)
         emb.add_field(name="Defence", value=f"{wb_data.defence:,} :shield:", inline=True)
         emb.add_field(name="Dexterity", value=f"{wb_data.dexterity:,} :boot:", inline=True)
