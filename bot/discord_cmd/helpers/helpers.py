@@ -188,7 +188,7 @@ async def make_gains_emb():
     if is_empty:
             return
     emb = Embed(
-            title="Daily guild gains",
+            title="Daily Guilds Gains",
             description=f"**Stats**: since <t:{int((get_current_date_game()).timestamp())}>\n"
                         f"**{season.name}**\n"
                         f"**Season Start**: <t:{int(datetime.fromisoformat(season.starts_at[:-1]).timestamp())}:R> (<t:{int(datetime.fromisoformat(season.starts_at[:-1]).timestamp())}>)\n"
