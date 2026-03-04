@@ -236,8 +236,6 @@ async def get_channel_and_edit(client:Bot,channel_id:int,message_id:int=None,con
             message = await channel.fetch_message(message_id)
             await message.edit(content=content,embed=embed)
         if delete_after is not None:
-            print(message)
-            print(content)
             await Database.insert_delmsg(message.id,channel.id,int(delete_after+datetime.now().timestamp()))
         return message
     except NotFound:
@@ -260,11 +258,9 @@ async def send(ctx,content:str="",embed:Embed=MISSING,view=MISSING,file=MISSING,
         if isinstance(ctx,ApplicationContext):
             msg = await ctx.followup.send(content=content,embed=embed,view=view,file=file)
             if delete_after is not None:
-                print(msg)
                 await Database.insert_delmsg(msg.id,ctx.channel_id,int(delete_after+datetime.now().timestamp()))
             return msg
         elif isinstance(ctx,GuildChannel):
-            print(ctx)
             msg = await ctx.send(content=content,embed=embed,view=view,file=file)
             if delete_after is not None:
                 await Database.insert_delmsg(msg.id,ctx.id,int(delete_after+datetime.now().timestamp()))
