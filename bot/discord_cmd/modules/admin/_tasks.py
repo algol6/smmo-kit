@@ -45,8 +45,6 @@ class AdminTask(Cog):
     async def update_season(self):
         curr_season = await Database.select_last_season()
         end_time:datetime = datetime.fromisoformat(curr_season.ends_at[:-1])
-        print(end_time)
-        print(end_time>datetime.now() + timedelta(days=1))
         if end_time > datetime.now() + timedelta(days=1):
             return
         self.update_season.change_interval(time=time(hour=18))
