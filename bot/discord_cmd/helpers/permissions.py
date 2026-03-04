@@ -38,7 +38,10 @@ def require_admin_or_staff():
                 ctx: ApplicationContext = args[1]
                 is_staff,user = await is_admin_or_staff(ctx)
                 if not (is_staff or await is_owner(ctx)):
-                    logger.info("User [%s] is not admin in: %s",ctx.user.name,ctx.guild.name)
+                    try:
+                        logger.info("User [%s] is not admin in: %s",ctx.user.name,ctx.guild.name)
+                    except:
+                        logger.exception("Exception in require_admin_or_staff()")
                     await ctx.respond(
                         content="You do not have permission to run this command or you or the server aren't linked with the bot.",
                         ephemeral=True
