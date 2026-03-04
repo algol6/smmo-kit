@@ -63,6 +63,10 @@ class OrphanageTask(commands.Cog):
                         msg = await helpers.get_channel_and_edit(self.client,notification_config.channel_id,embed=emb)
                         if not isinstance(msg, bool):
                             await Database.update_orphanage_msg_id(notification_config.channel_id,notification_config.tier,msg.id)
+                        elif not msg:
+                            logger.info("Removing a orphanage cause: channel not found or forbidden: %s",notification_config.channel_id)
+                            await Database.delete_orphanage(notification_config.channel_id)
+                            
                     else:
                         msg = await helpers.get_channel_and_edit(self.client,
                                                                 channel_id=notification_config.channel_id,
@@ -74,7 +78,7 @@ class OrphanageTask(commands.Cog):
                     await helpers.get_channel_and_edit(self.client,
                                                         notification_config.channel_id,
                                                         content=f"<@&{notification_config.role_id}>\nOrphanage **tier {tier}** is now active.",
-                                                        delete_after=7200)
+                                                        delete_after=int(datetime.fromisoformat(orphanage_data[i].goal_reached_at).timestamp() + 7200)-datetime.now().timestamp())
                 if not await Database.update_orphanage_active(notification_config.channel_id,notification_config.tier,int(tier_data.is_active)):
                     logger.warning("Couldn't update orphanage status")
         
