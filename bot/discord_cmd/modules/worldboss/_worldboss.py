@@ -38,7 +38,7 @@ class Worldboss(Cog):
             if ping.channel_id in guild_channels:
                 append(f"<#{ping.channel_id}> <@&{ping.role_id}> **{ping.seconds_before//60}** minutes before. {"God only." if bool(ping.god) else "All wb."}")
         emb = helpers.Embed(title="Worldboss Pings")
-        emb.add_field(name="",value=f"{"\n".join(pings)}")
+        emb.add_field(name="",value="\n".join(pings))
         await helpers.send(ctx,embed=emb)
 
     @subcommand("admin worldboss")
