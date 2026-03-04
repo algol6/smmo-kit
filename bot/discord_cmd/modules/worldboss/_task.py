@@ -62,7 +62,7 @@ class WorldbossTasks(Cog):
             
 
     async def notify_wb(self, wb:WorldBoss):
-        data = sorted(await Database.select_wb_notification(), key=lambda boss: boss.seconds_before)
+        data = await Database.select_wb_notification()
         for d in data:
             if d.boss_id == wb.id:
                 continue
@@ -71,6 +71,5 @@ class WorldbossTasks(Cog):
             await Database.update_wb_notification(d.channel_id, wb.id,d.seconds_before)
             if d.god == 1 and not wb.god:
                 continue
-            print(f"sending wb ping messsage {wb.name}")
             await helpers.get_channel_and_edit(self.client,d.channel_id,content=f"<@&{d.role_id}> world boss **{wb.name}** in about <t:{wb.enable_time}:R>", delete_after=(wb.enable_time - datetime.now().timestamp() + 60))
               
