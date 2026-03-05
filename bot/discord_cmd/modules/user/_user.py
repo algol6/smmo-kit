@@ -485,26 +485,28 @@ class Users(Cog):
     async def stats(self,ctx:ApplicationContext,user:Member=None,smmo_id:int=None,timeframe:str="Daily"):
         date = helpers.get_date_game(timeframe)
         to_date = helpers.get_current_date_game()
+        current_stats = await helpers.get_user(ctx, smmo_id, user)
+        avatar = current_stats.avatar
+        name = current_stats.name
+        id = current_stats.id
         if timeframe != "Yesterday":
             to_date += timedelta(days=1)
-        current_stats = await helpers.get_user(ctx, smmo_id, user)
+        else:
+            current_stats = await Database.select_user_stat(id, to_date.year, to_date.month, to_date.day)
         if not current_stats:
             return
-        stats = await Database.select_user_stat(current_stats.id, date.year, date.month, date.day)
+        stats = await Database.select_user_stat(id, date.year, date.month, date.day)
         if stats is None:
             return await helpers.send(ctx,"No data, may take up to 24h to load")
-        quests: bool = False
-        bounties: bool = False
-        if stats.quest_performed != -1 and current_stats.quests_performed != -1:
-            quests = True
-        if stats.bounties_completed != -1 and current_stats.bounties_completed != -1:
-            bounties = True
+        quests: bool = stats.quests_performed != -1 and current_stats.quests_performed != -1
+        bounties: bool = stats.bounties_completed != -1 and current_stats.bounties_completed != -1
+       
         emb = helpers.Embed(
-            title=f"[{current_stats.id}] {current_stats.name}",
-            url=f"https://simple-mmo.com/user/view/{current_stats.id}",
+            title=f"[{id}] {name}",
+            url=f"https://simple-mmo.com/user/view/{id}",
             description=f"Stats: <t:{int(stats.time)}> to <t:{int(to_date.timestamp())}>\n"
             f"Last updated: <t:{int(datetime.now().timestamp())}:R>",
-            thumbnail=f"https://simple-mmo.com{current_stats.avatar}",
+            thumbnail=f"https://simple-mmo.com{avatar}",
         )
         emb.add_field(
             name="Levels:",
@@ -527,7 +529,7 @@ class Users(Cog):
         if quests:
             emb.add_field(
                 name="Quests:",
-                value=f"{current_stats.quests_performed - stats.quest_performed:,}",
+                value=f"{current_stats.quests_performed - stats.quests_performed:,}",
                 inline=True,
             )
         if bounties:
