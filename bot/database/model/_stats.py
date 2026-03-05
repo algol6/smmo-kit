@@ -11,7 +11,7 @@ class UserStat:
     steps: int
     npc_kills: int
     user_kills: int
-    quest_performed: int
+    quests_performed: int
     bounties_completed: int
     reputation: int
     chests_opened: int
