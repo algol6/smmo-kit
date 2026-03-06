@@ -74,7 +74,7 @@ class LeaderboardView(discord.ui.View):
                 value = usr.levels
             
             msg += f"#{i} [{usr.name}](https://simple-mmo.com/user/view/{usr.smmo_id}): **{value:,}** {f"<t:{int(usr.date-86400)}>-<t:{int(usr.date)}>" if not isinstance(usr.date,bytes) else ""}\n"
-        emb = helpers.Embed(title=f"{TITLE[self.type]} Leaderboard",description=f"You are placed #{position}/{len(self.data[self.type])} ({your_value:,})")
+        emb = helpers.Embed(title=f"{TITLE[self.type]} Leaderboard",description=f"You are placed #{position}/{len(self.data[self.type])}\nYour stat: {your_value:,}")
         emb.add_field(name="", 
                       value=msg, 
                       inline=False)
