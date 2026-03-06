@@ -3,7 +3,6 @@ from dataclasses import dataclass, field
 from ._guild import ShortGuildInfo
 from ._location import Location
 
-
 @dataclass
 class PlayerInfo:
     id: int
