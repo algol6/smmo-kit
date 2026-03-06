@@ -20,20 +20,15 @@ class ContributionView(discord.ui.View):
 
 
     async def send(self, ctx: discord.ApplicationContext):
-        self.ctx = ctx
         self.tier = 0
-        self.message = await ctx.followup.send(view=self)
+        await ctx.followup.send(view=self)
         await self.update_message(self.data[self.tier][:self.sep])
         
 
     async def update_message(self, data):
         await self.update_buttons()
-        try:
-            await self.message.edit(embed=await self.create_embed(data), view=self)
-        except discord.errors.Forbidden:
-            await self.ctx.followup.send(content="Bot doesn't have the perms to see this channel, so the buttons of the message doesn't work.")
-
-
+        await self.message.edit(embed=await self.create_embed(data), view=self)
+        
     async def update_buttons(self):
         if self.current_page == 1:
             self.prev_button.disabled = True
