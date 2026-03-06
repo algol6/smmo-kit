@@ -328,7 +328,8 @@ async def get_user(ctx:ApplicationContext|None,smmo_id:int|None=None,user:Member
         if bot_user is None:
             linked = False
             logger.info("User not linked")
-            await send(ctx,"User not linked")
+            if ctx is not None:
+                await send(ctx,"User not linked")
             return None
         smmo_id = smmo_id if smmo_id else bot_user.smmo_id
 
