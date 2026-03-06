@@ -106,12 +106,12 @@ def require_linked_server():
                 guild_id = await Database.select_server(ctx.guild_id)
                 if not guild_id:
                     await ctx.respond(
-                        content="""
-                        ```Server need to be linked.\n
-                        Use `/admin link server` adding the Guild ID of the guild you want to link.\n
-                        You can find the Guild ID in the link (ex: `https://simple-mmo.com/guilds/view/ID_HERE`)\n
-                        To Link the server you need to be Staff of the guild or have the perms to manage the server/channel/roles.```
-                        """,
+                        content=(
+                            f"```Server need to be linked.\n"
+                            f"Use `/admin link server` adding the Guild ID of the guild you want to link.\n"
+                            f"You can find the Guild ID in the link (ex: `https://simple-mmo.com/guilds/view/ID_HERE`)\n"
+                            f"To Link the server you need to be Staff of the guild or have the perms to manage the server/channel/roles.```"
+                            ),
                         ephemeral=True
                     )
                     return
