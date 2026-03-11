@@ -320,7 +320,7 @@ def get_current_date_game() -> datetime:
         da = temp_data - timedelta(days=1)
     return da
 
-async def get_user(ctx:ApplicationContext|None,smmo_id:int|None=None,user:Member|None=None) -> PlayerInfo | None:
+async def get_user(ctx:ApplicationContext|None=None,smmo_id:int|None=None,user:Member|None=None) -> PlayerInfo | None:
     if ctx or user:
         u_id = user.id if user else ctx.user.id
         linked:bool = True
@@ -332,11 +332,13 @@ async def get_user(ctx:ApplicationContext|None,smmo_id:int|None=None,user:Member
                 await send(ctx,"User not linked")
             return None
         smmo_id = smmo_id if smmo_id else bot_user.smmo_id
-
+    if smmo_id is None:
+        return None
     game_user = await SMMOApi.get_player_info(smmo_id)
     if not game_user or not linked:
         logger.warning("Wrong SMMO ID")
-        await send(ctx,"Wrong smmo id or user not linked")
+        if ctx is not None:
+            await send(ctx,"Wrong smmo id or user not linked")
         return None
     return game_user
 
