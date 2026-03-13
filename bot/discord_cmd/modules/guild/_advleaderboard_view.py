@@ -8,37 +8,16 @@ class AdvleaderboardView(discord.ui.View):
     current_page: int = 1
     sep: int = 10
 
-    async def on_timeout(self):
-        self.disable_all_items()
-        self.prev_button.style = discord.ButtonStyle.gray
-        self.next_button.style = discord.ButtonStyle.gray
-        self.first_button.style = discord.ButtonStyle.gray
-        self.last_button.style = discord.ButtonStyle.gray
-        self.all_button.style = discord.ButtonStyle.gray
-        self.tier1_button.style = discord.ButtonStyle.gray
-        self.tier2_button.style = discord.ButtonStyle.gray
-        self.tier3_button.style = discord.ButtonStyle.gray
-        self.tier4_button.style = discord.ButtonStyle.gray
-        self.tier5_button.style = discord.ButtonStyle.gray
-        self.tier6_button.style = discord.ButtonStyle.gray
-        self.tier7_button.style = discord.ButtonStyle.gray
-
-
     async def send(self, ctx: discord.ApplicationContext):
-        self.ctx = ctx
         self.tier = 0
         self.data_type = 0
-        self.message = await ctx.followup.send(view=self)
+        await ctx.followup.send(view=self)
         await self.update_message(self.data[self.tier][self.data_type][:self.sep])
         
 
     async def update_message(self, data):
         await self.update_buttons()
-        try:
-            await self.message.edit(embed=await self.create_embed(data), view=self)
-        except discord.errors.Forbidden:
-            await self.ctx.followup.send(content="Bot doesn't have the perms to see this channel, so the buttons of the message doesn't work.")
-
+        await self.message.edit(embed=await self.create_embed(data), view=self)
 
     async def update_buttons(self):
         if self.current_page == 1:
