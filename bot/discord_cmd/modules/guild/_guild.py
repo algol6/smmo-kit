@@ -4,8 +4,6 @@ from pycord.multicog import subcommand
 
 from bot.api import SMMOApi
 from bot.database import Database
-from bot.api.model import GuildSeasonLeaderboard, GuildMemberInfo, PlayerInfo
-from bot.database.model import UserStat, Requirements
 from bot.discord_cmd.modules.guild._advleaderboard_view import AdvleaderboardView
 from bot.discord_cmd.modules.guild._member_list_view import MemberListView
 from bot.discord_cmd.modules.guild._contribution_view import ContributionView
@@ -15,7 +13,6 @@ from bot.discord_cmd.modules.guild._guild_gains_view import GuildGainsView
 from bot.discord_cmd.modules.guild._tasks import GuildTask
 from bot.discord_cmd.helpers import permissions, command_utils, logger, helpers
 
-from random import random, choice
 from datetime import datetime, time, date, timezone, timedelta
 from math import floor
 from matplotlib import pyplot as plt
@@ -361,7 +358,7 @@ class Guild(Cog):
     @option(name="timeframe", choices=["Daily","Past 7 Days","In-Game Weekly","Yesterday","Monthly","In-Game Monthly"])
     @permissions.require_linked_server()
     @command_utils.auto_defer(False)
-    @command_utils.statistics("/guild members lb")
+    @command_utils.statistics("/guild members_lb")
     @command_utils.took_too_long()
     async def members_lb(self,ctx:ApplicationContext,timeframe:str="Daily",guild_id:int=None,reverse:bool=False) -> None:
         if guild_id is None:
