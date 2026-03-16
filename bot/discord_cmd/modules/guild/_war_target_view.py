@@ -69,8 +69,12 @@ class WarTargetView(discord.ui.View):
     
         for user in data:
             percentage = 0.1 if user.membership else 0.05
+            rel_hp = user.hp/user.max_hp
+            is_attk = rel_hp>=0.5
             emb.add_field(name=f"{user.name} [{user.id}]", 
-                          value=f"Lvl: {user.level:,}\nHP: {user.hp/user.max_hp:.0%} {":heart:" if user.hp/user.max_hp>=0.5 else ":broken_heart:"}{f"\nAttackable in: <t:{int((self.updated + timedelta(minutes=(ceil((0.5-(user.hp/user.max_hp))/percentage)*5))).timestamp())}:R>" if user.hp/user.max_hp<0.5 else ""}",
+                          value=f"Lvl: {user.level:,}\n"
+                                f"HP: {rel_hp:.0%} {":heart:" if is_attk else ":broken_heart:"}"
+                                f"{f"\nAttackable in: <t:{int((self.updated + timedelta(minutes=(ceil((0.5-(rel_hp))/percentage)*5))).timestamp())}:R>" if not is_attk else ""}",
                           inline=False)
         emb.set_footer(text=f"Page {self.current_page}/{(len(self.data[self.type])) // self.sep + 1}")
         return emb
