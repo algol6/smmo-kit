@@ -19,6 +19,10 @@ class Event:
     message_id: int
     channel_id: int
     team_size: int
+    image: str
+    thumbnail: str
+    global_evt: bool
+    host: str
 
 @dataclass
 class EventStats:
@@ -40,8 +44,8 @@ class EventTeam:
 
 @dataclass
 class EventLeaderboard:
-    channel_id: int
-    message_id: int
+    channel_id: str
+    message_id: str
     event_id: int
 
 @dataclass
