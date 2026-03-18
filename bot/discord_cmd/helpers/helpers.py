@@ -15,6 +15,63 @@ from PIL import Image
 from itertools import chain
 from urllib.parse import urlparse
 
+
+import ast
+import operator
+
+def eval_expr(expr, variables):
+    allowed_operators = {
+        ast.Add: operator.add,
+        ast.Sub: operator.sub,
+        ast.Mult: operator.mul,
+        ast.Div: operator.truediv,
+        ast.Pow: operator.pow,
+        ast.USub: operator.neg
+    }
+    try:
+        tree = ast.parse(expr, mode='eval')
+        def _eval(node):
+            if isinstance(node, ast.Expression):
+                return _eval(node.body)
+            elif isinstance(node, ast.BinOp):
+                if type(node.op) not in allowed_operators:
+                    raise ValueError("Unsupported operator")
+                return allowed_operators[type(node.op)](_eval(node.left), _eval(node.right))
+            elif isinstance(node, ast.UnaryOp):
+                if type(node.op) not in allowed_operators:
+                    raise ValueError("Unsupported unary operator")
+                return allowed_operators[type(node.op)](_eval(node.operand))
+            elif isinstance(node, ast.Constant):
+                return node.n
+            elif isinstance(node, ast.Name):
+                if node.id in variables:
+                    return variables[node.id]
+                else:
+                    raise ValueError(f"Unknown variable: {node.id}")
+            else:
+                raise ValueError("Invalid expression")
+
+        return _eval(tree)
+    except Exception as e:
+        return f"Error: {e}"
+
+def evaluate_formula(formula:str, step:int, npc:int, pvp:int):
+    variables = {
+        'steps': step,
+        'step': step,
+        'npc': npc,
+        'pvp': pvp
+    }
+    result = eval_expr(formula.lower(), variables)
+    return result
+
+def is_number(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False    
+
 def is_valid_url(url):
     try:
         result = urlparse(url)
@@ -43,10 +100,9 @@ async def get_war_guild(ctx:AutocompleteContext):
                 if war.guild_1["id"] == guild_id:
                     # guilds.append([war.guild_2["name"],war.guild_2["id"]])
                     wars_list[str(guild_id)]["autocomplete"].append([f"{war.guild_2['name']} - {war.guild_2['id']}",war.guild_1["kills"]])
-                else:
-                    if war.guild_2["id"] == guild_id:
-                        # guilds.append([war.guild_1["name"],war.guild_1["kills"]])
-                        wars_list[str(guild_id)]["autocomplete"].append([f"{war.guild_1['name']} - {war.guild_1['id']}",war.guild_2["kills"]])
+                elif war.guild_2["id"] == guild_id:
+                    # guilds.append([war.guild_1["name"],war.guild_1["kills"]])
+                    wars_list[str(guild_id)]["autocomplete"].append([f"{war.guild_1['name']} - {war.guild_1['id']}",war.guild_2["kills"]])
             # wars_list[str(guild_id)]["autocomplete"] = sorted(wars_list[str(guild_id)]["autocomplete"],key=lambda item: item[1],reverse=True)
         try:
             return sorted([i[0] for i in wars_list[str(guild_id)]["autocomplete"] if ctx.value.lower() in i[0].lower()]) 
@@ -239,10 +295,10 @@ async def get_channel_and_edit(client:Bot,channel_id:int,message_id:int=None,con
             await Database.insert_delmsg(message.id,channel.id,int(delete_after+datetime.now().timestamp()))
         return message
     except NotFound:
-        logger.warning("Channel Id Invalid")
+        logger.warning("channel/message Id Invalid: %s:%s",channel_id,message_id)
         return False
     except Forbidden:
-        logger.warning("Channel forbidden")
+        logger.warning("Channel forbidden: %s:%s",channel_id,message_id)
         return False
     except HTTPException:
         logger.warning("Failed to get the channel")
@@ -261,6 +317,7 @@ async def send(ctx,content:str="",embed:Embed=MISSING,view=MISSING,file=MISSING,
                 await Database.insert_delmsg(msg.id,ctx.channel_id,int(delete_after+datetime.now().timestamp()))
             return msg
         elif isinstance(ctx,GuildChannel):
+            logger.info("Is a GuildChannel")
             msg = await ctx.send(content=content,embed=embed,view=view,file=file)
             if delete_after is not None:
                 await Database.insert_delmsg(msg.id,ctx.id,int(delete_after+datetime.now().timestamp()))
@@ -310,6 +367,7 @@ def get_date_game(tf:str) -> datetime:
                 return datetime.strptime(tf,"%d/%m/%Y").replace(tzinfo=timezone.utc).replace(hour=12)
             except ValueError:
                 logger.exception("when parsing data")
+                return None
 
 def get_current_date_game() -> datetime:
     da = datetime.now(tz=timezone.utc)
