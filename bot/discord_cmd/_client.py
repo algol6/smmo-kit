@@ -25,7 +25,7 @@ client.load_extension("bot.discord_cmd.modules.guild")
 client.load_extension("bot.discord_cmd.modules.user")
 client.load_extension("bot.discord_cmd.modules.orphanage")
 client.load_extension("bot.discord_cmd.modules.diamond")
-#client.load_extension("bot.discord_cmd.modules.event")
+client.load_extension("bot.discord_cmd.modules.event")
 client.load_extension("bot.discord_cmd.modules.utility")
 client.load_extension("bot.discord_cmd.modules.worldboss")
 client.load_extension("bot.discord_cmd.modules.extra")
@@ -49,6 +49,11 @@ async def on_application_command_error(ctx: ApplicationContext, error: DiscordEx
     elif isinstance(error,HTTPError):
         return await helpers.send(ctx,content=f"Error caused by: {error}")
     await helpers.send(ctx,"Unexpected error. Try again later.",delete_after=3600)
+
+@client.event
+async def on_ready():
+    from bot.discord_cmd.modules.event._registration_view import RegistrationView
+    client.add_view(RegistrationView())
 
 def main():
     try:
