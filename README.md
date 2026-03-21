@@ -22,11 +22,7 @@ SMMO_TOKEN = "smmo-token-here"
 `pip install -r requirements.txt`
 
 ### Windows
-`python -m venv venv`
-
-`./venv/bin/activate.bat`
-
-`pip install -r requirements.txt`
+`python run.py`
 
 ## Running
 
