@@ -173,7 +173,7 @@ class EventTasks(Cog):
             ))
         event_lb = sorted(event_lb,key=lambda sts: sts[1], reverse=True)[:10]
         
-        for v,i in zip(event_lb,range(1, 11)):
+        for i,v in enumerate(event_lb,start=1):
             if event.team_size == 1:
                 msg = f"#{i} - {v[2][0].name}: {v[1]:,}"
             else:
