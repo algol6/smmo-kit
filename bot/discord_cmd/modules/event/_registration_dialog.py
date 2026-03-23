@@ -7,7 +7,6 @@ from bot.discord_cmd.modules.event._preview_registration_view import PreviewRegi
 class RegistrationModal(discord.ui.Modal):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.api_key = None
         self.add_item(discord.ui.InputText(label="Name",placeholder="The name of the event. ex: The Greatest Event Ever Done"))
         self.add_item(discord.ui.InputText(label="Event Formula",placeholder="Use 'NPC','STEPS' or 'PVP' as variable. ex: NPC*30 + STEPS*3"))
         self.add_item(discord.ui.InputText(label="Starting Date (On server reset of that day)",placeholder="Use DD/MM/YYYY format. ex: 18/11/2026"))
