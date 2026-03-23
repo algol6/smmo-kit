@@ -68,17 +68,17 @@ class EventTasks(Cog):
 
     @loop(hours=1)
     async def update_leaderboard(self):
-        data = await Database.select_all_event_lb()
-        event = await Database.select_all_events(int(datetime.now().timestamp()))
+        data = tuple(await Database.select_all_event_lb())
+        curr_timestamp = int(datetime.now().timestamp())
+        event = await Database.select_all_events(curr_timestamp)
         for e in event:
             for d in data:
                 if e.id != d.event_id:
                     continue
-                if e.end_time < datetime.now().timestamp():
-                    continue
-                if e.start_time > datetime.now().timestamp():
+                if e.start_time > curr_timestamp > e.end_time:
                     continue
                 emb = await self.make_embed(e)
+                emb.set_thumbnail(url=e.thumbnail)
                 await helpers.get_channel_and_edit(self.client,d.channel_id,d.message_id,embed=emb)
 
 
@@ -119,12 +119,11 @@ class EventTasks(Cog):
     @staticmethod
     async def make_embed(event) -> helpers.Embed:
         event_partecipants = await Database.select_event_partecipants(event.id)
-
         event_teams:dict = dict()
         current_date = helpers.get_current_date_game()
         if event.guildies_only:
             guild_member = tuple(await SMMOApi.get_guild_members(event.guild_id))
-            
+        
         for partecipant in event_partecipants:
             user_stats = await Database.select_user_stat(partecipant.smmo_id,event.start_year,event.start_month,event.start_day)
             if user_stats is None:
@@ -154,18 +153,25 @@ class EventTasks(Cog):
                                                   start_day_stats.steps-user_stats.steps,
                                                   start_day_stats.npc_kills-user_stats.npc_kills,
                                                   start_day_stats.user_kills-user_stats.user_kills)
-            
+ 
             if not helpers.is_number(curr_stats) or not helpers.is_number(today_stats):
                 return helpers.Embed(title="Error with event Formula")
             event_teams[partecipant.team].append({"player":partecipant,"stats": curr_stats, "gains": curr_stats-today_stats, "name":current_stats.name})
 
+  
         if len(event_teams) == 0:
             return helpers.Embed(title="No Data")
+        emb = helpers.Embed(title=f"{event.name}'s Leaderboard",
+                            description=f"Last Update: <t:{int(datetime.now().timestamp())}:R>")
 
-        # evt.event_teams = {k[0]:sum(y["stats"] for y in k[1]) for k in sorted(event_teams.items(), key=lambda item: sum(x["stats"] for x in item[1]), reverse=True)}
-        event_lb = [(k,sum(y["stats"] for y in event_teams[k]), [x["player"] for x in event_teams[k]]) for k in sorted(event_teams, key=lambda item: sum(x["stats"] for x in event_teams[item]), reverse=True)][:10]
-        emb = helpers.Embed(title="",
-                                  description=f"Last Update: <t:{int(datetime.now().timestamp())}:R>")
+        event_lb = []
+        for team,mbrs in event_teams.items():
+            event_lb.append((
+                team,
+                sum(mbr["stats"] for mbr in mbrs),
+                [mbr["player"] for mbr in mbrs]
+            ))
+        event_lb = sorted(event_lb,key=lambda sts: sts[1], reverse=True)[:10]
         
         for v,i in zip(event_lb,range(1, 11)):
             if event.team_size == 1:
@@ -173,7 +179,6 @@ class EventTasks(Cog):
             else:
                 msg = f"#{i} - Team '{v[0]}': {v[1]:,}"
             emb.add_field(name="",
-                        #   value=f"#{i} - Team '{v[0]}' (Total: {v[1]:,})",
                           value=msg,
                           inline=False)
         emb.set_footer(text=f"Updated every hour")
