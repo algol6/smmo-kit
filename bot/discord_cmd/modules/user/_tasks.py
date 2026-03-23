@@ -72,7 +72,6 @@ class UsersTask(Cog):
                 if not await Database.insert_user_stat(player.id,date.year,date.month,date.day,date_timestamp,player.level,player.steps,player.npc_kills,player.user_kills,player.quests_performed,player.bounties_completed,player.reputation,player.chests_opened):
                     if not await Database.update_user_stat(player.id,date.year,date.month,date.day,player.quests_performed,player.bounties_completed,player.reputation,player.chests_opened):
                         logger.warning("Error while updating linked user: %s",user)
-                    logger.warning("Error while saving linked user: %s",user)
                 ids.add(user.smmo_id)
                 if player.banned:
                     await Database.insert_banned(player.id)
