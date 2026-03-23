@@ -207,7 +207,7 @@ class Guild(Cog):
             return helpers.send(ctx,content="No Player without safe mode found")
         target_view = WarTargetView()
         target_view.data = (
-            (x for x in targets if x.hp >= x.max_hp/2),
+            tuple(x for x in targets if x.hp >= x.max_hp/2),
             sorted(targets,key=lambda item: item.hp/item.max_hp)
         )
         target_view.guild_info = guild
