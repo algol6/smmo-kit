@@ -13,8 +13,8 @@ class GuildTask(Cog):
         self.client = client
         self.check_stats.start()
         self.check_raid.start()
-        #import asyncio
-        #asyncio.run(self.check_stats())
+        # import asyncio
+        # asyncio.run(self.check_stats())
 
     def cog_unload(self):
         self.check_stats.cancel()
