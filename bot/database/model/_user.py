@@ -24,6 +24,8 @@ class ValutMsg:
     channel_id:int
     role_id:int
     status:int
+    message_id: int
+    code: str
 
 @dataclass
 class BestStats:
