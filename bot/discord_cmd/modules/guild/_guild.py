@@ -11,7 +11,9 @@ from bot.discord_cmd.modules.guild._contribution_dialog import ContributionModal
 from bot.discord_cmd.modules.guild._war_target_view import WarTargetView
 from bot.discord_cmd.modules.guild._guild_gains_view import GuildGainsView
 from bot.discord_cmd.modules.guild._tasks import GuildTask
-from bot.discord_cmd.helpers import permissions, command_utils, logger, helpers
+from bot.discord_cmd.helpers import permissions, command_utils, helpers
+from bot.discord_cmd.helpers.logger import logger
+
 
 from datetime import datetime, time, date, timezone, timedelta
 from math import floor
