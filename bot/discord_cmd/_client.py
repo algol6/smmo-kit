@@ -55,6 +55,31 @@ async def on_ready():
     from bot.discord_cmd.modules.event._registration_view import RegistrationView
     client.add_view(RegistrationView())
 
+@client.event
+async def on_member_join(member):
+    conf = await Database.select_join_roles(member.guild.id)
+    if conf is None:
+        return
+    print(conf)
+    if conf.msg != "":
+        try:
+            channel = await client.get_channel(conf.channel)
+            msg = await channel.send(content=conf.msg,delete_after=500)
+        except:
+            pass
+    player = await helpers.get_user(user=member.id)
+    if player is None:
+        try:
+            msg = await channel.send(content="> To automatically get roles link with the bot using '/user verify' and following the instructions or ask to the moderators.",delete_after=500)
+            return
+        except:
+            pass
+    guild_id = await Database.select_server(member.guild.id)
+    if guild_id == player.guild.id:
+        await helpers.give_join_roles(member,conf.groles)
+    else:
+        await helpers.give_join_roles(member,conf.vroles)
+    
 def main():
     try:
         logger.info("Starting Bot. Goodmorning!")

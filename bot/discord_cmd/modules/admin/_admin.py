@@ -9,12 +9,38 @@ from bot.discord_cmd.helpers.logger import logger
 from bot.api import SMMOApi
 from bot.database import Database
 from bot.discord_cmd.modules.guild._requirements_view import RequirementsView
+from bot.discord_cmd.modules.admin._auto_add_role_selection_view import WelcomeModal
 from bot.database.model import Requirements
 from bot.discord_cmd.modules.admin._tasks import AdminTask
 
 class Admin(Cog):
     def __init__(self, client) -> None:
         self.client = client
+
+    @subcommand("admin")
+    @slash_command(description="Set a welcome for player when they join the server")
+    @guild_only()
+    @permissions.require_linked_server()
+    @command_utils.statistics("/admin set_join")
+    @command_utils.took_too_long()
+    async def set_join(self, ctx:ApplicationContext) -> None:
+        conf = await Database.select_join_roles(ctx.guild.id)
+        if conf is not None:
+            return await ctx.followup.send(content="Message already set, remove it before setting another (/admin rm_join)")
+        modal = WelcomeModal(title="Set Message")
+        modal.author_id = ctx.author.id
+        await ctx.send_modal(modal)
+
+    @subcommand("admin")
+    @slash_command(description="Remove /admin set_join configuration")
+    @guild_only()
+    @permissions.require_linked_server()
+    @command_utils.statistics("/admin rm_join")
+    @command_utils.took_too_long()
+    async def rm_join(self, ctx:ApplicationContext) -> None:
+        await Database.delete_join_roles(ctx.guild.id)
+        return await ctx.followup.send(content="Done")
+        
 
     @subcommand("admin")
     @slash_command(description="Analize last 7 days of the guild and suggest best task to gain pp/gxp")
@@ -113,7 +139,7 @@ class Admin(Cog):
         except Forbidden:
             return await helpers.send(ctx,content="Bot doesn't have the perms to see/write the channel.")
 
-        if not await Database.insert_valutmsg(channel.id, role.id if role else None):
+        if not await Database.insert_valutmsg(channel.id, role.id if role else None,0):
             return await helpers.send(ctx,content="Message already setted.")
         await helpers.send(ctx,content="Ping set.")
 
@@ -222,7 +248,7 @@ class Admin(Cog):
     @command_utils.statistics("/admin link server")
     @command_utils.took_too_long()
     async def server(self,ctx:ApplicationContext,guild_id:int) -> None:
-        player = ctx.user_game_profile if "user_game_profile" in ctx else await SMMOApi.get_player_info(ctx.discord_user.smmo_id)
+        player = ctx.user_game_profile if hasattr(ctx,"user_game_profile") else await SMMOApi.get_player_info(ctx.discord_user.smmo_id)
         guild_members = await SMMOApi.get_guild_members(guild_id)
         if player.guild is not None and player.guild.id == guild_id and any(x.position != "Member" for x in guild_members if player.id == x.user_id):
             if not await Database.insert_server(guild_id, ctx.guild_id):
