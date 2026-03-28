@@ -372,6 +372,17 @@ class Users(Cog):
             if not await Database.update_user(ctx.user.id, smmo_id):
                 return await helpers.send(ctx,content="Unknow Error.")
             await helpers.send(ctx,content="Your account is linked.\nYou can set back your motto.")
+            conf = await Database.select_join_roles(ctx.guild.id)
+            if conf is None:
+                return
+            member = ctx.user
+            if not isinstance(member,Member):
+                return
+            guild_id = await Database.select_server(member.guild.id)
+            if guild_id == x2.guild.id:
+                await helpers.give_join_roles(member,conf.groles)
+            else:
+                await helpers.give_join_roles(member,conf.vroles)
             return
         await helpers.send(ctx,content=message1.format(x1.verification))
 
@@ -384,6 +395,10 @@ class Users(Cog):
     @command_utils.took_too_long()
     async def unverify(self,ctx:ApplicationContext):
         unverify_view = UnverifyButton()
+        if hasattr(ctx,"discord_user"):
+            unverify_view.discord_user = ctx.discord_user
+        else:
+            unverify_view.discord_user = "Err getting discord_user on decorator"
         unverify_view.user_id = ctx.user.id
         await unverify_view.send(ctx)
 
