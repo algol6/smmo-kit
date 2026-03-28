@@ -161,8 +161,8 @@ class AdminTask(Cog):
         emb = helpers.Embed(title="Daily Vault Code", 
                             description='Go to "Town > Vault" to use the code',
                             image="https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExNDFob2VteW92d3FzbHF5ZHNxMDc3Y2prMnJic2dmN3BudmRhZ2lyYiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/I7Il0qBnjThAI/giphy.gif")
-
-        match len(str(code.code)):
+        code.code = code.split(":")
+        match len(str(code.code[0])):
             case 9:
                 bonuses = 15
             case 10:
@@ -174,20 +174,26 @@ class AdminTask(Cog):
             case _:
                 bonuses = 10
 
-        emb.add_field(name="Code", value=f"{code.code}", inline=False)
+        emb.add_field(name="Code", value=f"{code.code[0]}", inline=False)
         emb.add_field(
             name="Bonus:",
             value=f"**{bonuses}**% on BA, Steps, PVP, Quests and Professions",
             inline=False
         )
+        if code.code[1] != "":
+            emb.add_field(name="Temple Items:",
+                      value=code.code[1],
+                      inline=False
+                      )
         if code.note is not None:
             emb.add_field(name="", value=code.note, inline=False)
             
         valutmsg = await Database.select_valutmsg()
         for v in valutmsg:
             if v.status == 1:
-                if v.code != code.code:
+                if v.code != ":".join(code.code):
                     await helpers.get_channel_and_edit(self.client,v.channel_id,v.message_id,embed=emb)
+                    await Database.update_valutmsg(1, v.channel_id, ":".join(code.code),msg.id)
                 continue
             del_after = int((date+timedelta(days=1)).timestamp()-datetime.now().timestamp())
             msg = await helpers.get_channel_and_edit(self.client,v.channel_id,embed=emb,delete_after=del_after)
@@ -195,7 +201,7 @@ class AdminTask(Cog):
                 continue
             if v.role_id is not None:
                 await helpers.get_channel_and_edit(self.client,v.channel_id,content=f"<@&{v.role_id}> Here the Vault Code!",delete_after=del_after)
-            await Database.update_valutmsg(1, v.channel_id, code.code,msg.id)
+            await Database.update_valutmsg(1, v.channel_id, ":".join(code.code),msg.id)
 
     @loop(time=time(hour=12))
     async def reset_valut_msg(self):

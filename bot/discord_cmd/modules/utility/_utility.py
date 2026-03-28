@@ -15,19 +15,22 @@ class Utility(commands.Cog):
     def __init__(self, client):
         self.client = client
     
-    @slash_command(description="Show vault code")
+    @slash_command(description="Show or set vault code")
     @guild_only()
     @command_utils.auto_defer()
     @command_utils.statistics("/vault")
     @command_utils.took_too_long()
-    async def vault(self,ctx:ApplicationContext) -> None:
+    async def vault(self,ctx:ApplicationContext,set_code:str=None,set_temple:str=None) -> None:
         date = helpers.get_current_date_game()
+        if set_code is not None and helpers.is_number(set_code):
+            code = f"{set_code}:{set_temple if set_temple else ""}"
+            await Database.insert_valut(code,date.year,date.month,date.day,"")
         code = await Database.select_valut(date.year,date.month,date.day)
         if code is None:
             return await helpers.send(ctx,content="No code added for today, try again later")
         emb = helpers.Embed(title="Daily Vault Code",description='Go to "Town>Vault" to use the code')
-        
-        match len(str(code.code)):
+        code = code.split(":")
+        match len(str(code.code[0])):
             case 9:
                 bonuses = 15
             case 10:
@@ -40,10 +43,15 @@ class Utility(commands.Cog):
                 bonuses = 10
 
         emb.add_field(name="Code",
-                      value=f"{code.code}",
+                      value=f"{code.code[0]}",
                       inline=False)
         emb.add_field(name="Bonus:",
                       value=f"**{bonuses}**% on BA, Steps, PVP, Quests and Professions",
+                      inline=False
+                      )
+        if code.code[1] != "":
+            emb.add_field(name="Temple Items:",
+                      value=code.code[1],
                       inline=False
                       )
         if code.note is not None:
