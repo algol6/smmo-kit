@@ -54,4 +54,5 @@ class RegistrationModal(discord.ui.Modal):
         view.e_date = e_date
         view.event_formula = self.formula
         view.team_size = self.team_size
+        view.igguild_id = self.igguild_id
         await view.send(interaction,content=f"Teams Size: {self.team_size}")

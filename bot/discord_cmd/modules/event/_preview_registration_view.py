@@ -194,7 +194,9 @@ class PreviewRegistrationView(discord.ui.View):
             self.custom_image,
             self.custom_thumbnail,
             is_global,
-            f"{self.host[0]}:{self.host[1]}")
+            f"{self.host[0]}:{self.host[1]}",
+            self.igguild_id
+            )
         event = await Database.select_events_by_message(interaction.guild_id,id)
 
         view = RegistrationView()

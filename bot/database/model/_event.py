@@ -23,6 +23,7 @@ class Event:
     thumbnail: str
     global_evt: bool
     host: str
+    igguild_id: int
 
 @dataclass
 class EventStats:

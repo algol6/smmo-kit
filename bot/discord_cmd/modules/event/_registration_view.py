@@ -75,6 +75,9 @@ class RegistrationView(discord.ui.View):
         player = await helpers.get_user(user=interaction.user)
         if player is None:
             return await interaction.followup.send("You are not linked in the bot. Use '/user verify' to link.",ephemeral=True)
+        evt = await Database.select_event(self.event_id)
+        if evt.guildies_only and player.guild.id != evt.igguild_id:
+            return await interaction.followup.send("Event limited to the Guild members only.",ephemeral=True)
         if not await Database.insert_event_partecipant(player.id,player.name,interaction.user.id,self.event_id,""):
             return await interaction.followup.send("You already joined the event",ephemeral=True)
         self.user_registered = await Database.select_counter_event_user_partecipants(self.event_id)

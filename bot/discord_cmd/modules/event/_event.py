@@ -195,6 +195,7 @@ class Events(commands.Cog):
         modal.custom_thumbnail = custom_thumbnail
         modal.team_size = teams_size
         modal.author_id = ctx.author.id
+        modal.igguild_id = await Database.select_server(ctx.guild.id)
         await ctx.send_modal(modal)
         
     @subcommand("admin event")
