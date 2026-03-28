@@ -19,6 +19,23 @@ from urllib.parse import urlparse
 import ast
 import operator
 
+
+async def give_join_roles(member,roles):
+    roles = roles.split(":")
+
+    for role in roles:
+        if member.get_role(int(role)) != None:
+            continue
+        r = member.guild.get_role(int(role))
+        if r is None:
+            continue
+        try:
+            await member.add_roles(r,reason="Gived role on join the server",atomic=True)
+        except Forbidden:
+            logger.warning("No perms to give the role")
+        except HTTPException:
+            logger.waring("Can't give role, internet fault")
+
 def eval_expr(expr, variables):
     allowed_operators = {
         ast.Add: operator.add,
@@ -65,7 +82,7 @@ def evaluate_formula(formula:str, step:int, npc:int, pvp:int):
     result = eval_expr(formula.lower(), variables)
     return result
 
-def is_number(s):
+def is_number(s) -> bool:
     try:
         float(s)
         return True
@@ -90,153 +107,152 @@ def gen_is_empty(gen):
     return False,chain([first],gen)
 
 async def get_war_guild(ctx:AutocompleteContext):
-        guild_id = await Database.select_server(ctx.interaction.guild_id)
+    guild_id = await Database.select_server(ctx.interaction.guild_id)
+    global wars_list
+    if 'wars_list' not in globals():
+        wars_list = {} 
+    if str(guild_id) not in wars_list or datetime.now().timestamp() - wars_list[str(guild_id)]["time"] >= 300:
+        wars_list[str(guild_id)] = {"time":datetime.now().timestamp(),"wars":tuple(await SMMOApi.get_guild_wars(guild_id, 1)),"autocomplete":[]}
+        for war in wars_list[str(guild_id)]["wars"]:
+            if war.guild_1["id"] == guild_id:
+                # guilds.append([war.guild_2["name"],war.guild_2["id"]])
+                wars_list[str(guild_id)]["autocomplete"].append([f"{war.guild_2['name']} - {war.guild_2['id']}",war.guild_1["kills"]])
+            elif war.guild_2["id"] == guild_id:
+                # guilds.append([war.guild_1["name"],war.guild_1["kills"]])
+                wars_list[str(guild_id)]["autocomplete"].append([f"{war.guild_1['name']} - {war.guild_1['id']}",war.guild_2["kills"]])
+        # wars_list[str(guild_id)]["autocomplete"] = sorted(wars_list[str(guild_id)]["autocomplete"],key=lambda item: item[1],reverse=True)
+    try:
+        return sorted([i[0] for i in wars_list[str(guild_id)]["autocomplete"] if ctx.value.lower() in i[0].lower()]) 
+    except:
+        return []
+
+async def make_wars_emb(guild, c, v, g2, war_xp,bo:bool|None = None) -> str:
+    xp: int = 0
+    MAX_KILLS:int = 1500
+    BASE_XP:int = 120000
+    MULTIPLIER:float = 0.02
+
+    if bo is None:
+        xp = v.experience
+        msg = f"**Total** XP of #{c+1} **[{guild.name}](https://simple-mmo.com/guilds/view/{guild.id})**: {xp:,}\n"
+    elif bo:
+        xp = g2.experience
+        msg = f"**Total** XP of #{c} **[{guild.name}](https://simple-mmo.com/guilds/view/{guild.id})**: {xp:,}\n"
+    else:
+        xp = g2.experience
+        msg = f"**Total** XP of #{c+2} **[{guild.name}](https://simple-mmo.com/guilds/view/{guild.id})**: {xp:,}\n"
+    if guild.eligible_for_guild_war:
+        # wars_ongoing = await SMMOApi.get_guild_wars(guild.id, 1)
         global wars_list
         if 'wars_list' not in globals():
             wars_list = {} 
-        if str(guild_id) not in wars_list or datetime.now().timestamp() - wars_list[str(guild_id)]["time"] >= 300:
-            wars_list[str(guild_id)] = {"time":datetime.now().timestamp(),"wars":await SMMOApi.get_guild_wars(guild_id, 1),"autocomplete":[]}
-            for war in wars_list[str(guild_id)]["wars"]:
-                if war.guild_1["id"] == guild_id:
-                    # guilds.append([war.guild_2["name"],war.guild_2["id"]])
-                    wars_list[str(guild_id)]["autocomplete"].append([f"{war.guild_2['name']} - {war.guild_2['id']}",war.guild_1["kills"]])
-                elif war.guild_2["id"] == guild_id:
-                    # guilds.append([war.guild_1["name"],war.guild_1["kills"]])
-                    wars_list[str(guild_id)]["autocomplete"].append([f"{war.guild_1['name']} - {war.guild_1['id']}",war.guild_2["kills"]])
-            # wars_list[str(guild_id)]["autocomplete"] = sorted(wars_list[str(guild_id)]["autocomplete"],key=lambda item: item[1],reverse=True)
-        try:
-            return sorted([i[0] for i in wars_list[str(guild_id)]["autocomplete"] if ctx.value.lower() in i[0].lower()]) 
-        except:
-            return []
-
-async def make_wars_emb(guild, c, v, g2, war_xp,bo:bool|None = None) -> str:
-        xp: int = 0
-        MAX_KILLS:int = 1500
-        BASE_XP:int = 120000
-        MULTIPLIER:float = 0.02
-
-        if bo is None:
-            xp = v.experience
-            msg = f"**Total** XP of #{c+1} **[{guild.name}](https://simple-mmo.com/guilds/view/{guild.id})**: {xp:,}\n"
-        elif bo:
-            xp = g2.experience
-            msg = f"**Total** XP of #{c} **[{guild.name}](https://simple-mmo.com/guilds/view/{guild.id})**: {xp:,}\n"
-        else:
-            xp = g2.experience
-            msg = f"**Total** XP of #{c+2} **[{guild.name}](https://simple-mmo.com/guilds/view/{guild.id})**: {xp:,}\n"
-        if guild.eligible_for_guild_war:
-            # wars_ongoing = await SMMOApi.get_guild_wars(guild.id, 1)
-            global wars_list
-            if 'wars_list' not in globals():
-                wars_list = {} 
-            if str(guild.id) not in wars_list or datetime.now().timestamp() - wars_list[str(guild.id)]["time"] >= 300:
-                wars_list[str(guild.id)] = {"time":datetime.now().timestamp(),"wars":await SMMOApi.get_guild_wars(guild.id, 1)}
-            var: list[int] = [0,0,0,0,0,0,0]
-            earnings: list[int] = [0,0,0,0,0,0]
-            for w in wars_list[str(guild.id)]["wars"]:
-                if w.guild_1["id"] == guild.id:
-                    for i in range(7):
-                        if w.guild_1["kills"] >= MAX_KILLS - (i+1)*100:
-                            var[i] += 1
-                            if war_xp:
-                                guild_2 = await SMMOApi.get_guild_info(w.guild_2["id"])
-                                earnings[i] += max(int(guild_2.current_season_exp * MULTIPLIER), BASE_XP) + ((MAX_KILLS - w.guild_1["kills"]) * 50)
-                        elif i == 6:
-                            var[6] += 1
-                elif w.guild_2["id"] == guild.id:
-                    for i in range(7):
-                        if w.guild_2["kills"] >= MAX_KILLS - (i+1)*100:
-                            var[i] += 1
-                            if war_xp:
-                                guild_2 = await SMMOApi.get_guild_info(w.guild_1["id"])
-                                earnings[i] += max(int(guild_2.current_season_exp * MULTIPLIER), BASE_XP) + ((MAX_KILLS - w.guild_2["kills"]) * 50)
-                        elif i == 6:
-                            var[6] += 1
-                
-            if len(wars_list[str(guild.id)]) != 0:
-                msg = (f"{msg}*War that is about to **win***:\n"
-                        f"> War with more than **{MAX_KILLS-100}** kills: {var[0]} {f"(+ {earnings[0]:,} gxp)" if war_xp else ''}\n"
-                        f"> War with more than **{MAX_KILLS-200}** kills: {var[1]} {f"(+ {earnings[1]:,} gxp)" if war_xp else ''}\n"
-                        f"> War with more than **{MAX_KILLS-300}** kills: {var[2]} {f"(+ {earnings[2]:,} gxp)" if war_xp else ''}\n"
-                        f"> War with more than **{MAX_KILLS-400}** kills: {var[3]} {f"(+ {earnings[3]:,} gxp)" if war_xp else ''}\n"
-                        f"> War with more than **{MAX_KILLS-500}** kills: {var[4]} {f"(+ {earnings[4]:,} gxp)" if war_xp else ''}\n"
-                        f"> War with more than **{MAX_KILLS-600}** kills: {var[5]} {f"(+ {earnings[5]:,} gxp)" if war_xp else ''}\n"
-                        f"> *Other war*: {var[6]}\n"
-                        )
-        else:
-            msg = f"{msg}> *They have no wars ongoing*\n"
-        if bo is not None:
-            msg = f"{msg}XP diff betweeen **{v.guild['name']}-{guild.name}**: {xp - v.experience:,}\n"
-        return msg
+        if str(guild.id) not in wars_list or datetime.now().timestamp() - wars_list[str(guild.id)]["time"] >= 300:
+            wars_list[str(guild.id)] = {"time":datetime.now().timestamp(),"wars":tuple(await SMMOApi.get_guild_wars(guild.id, 1))}
+        
+        var: list[int] = [0,0,0,0,0,0,0]
+        earnings: list[int] = [0,0,0,0,0,0]
+        for w in wars_list[str(guild.id)]["wars"]:
+            if w.guild_1["id"] == guild.id:
+                kills = w.guild_1["kills"]
+                vs_guild = w.guild_2["id"]
+            elif w.guild_2["id"] == guild.id:
+                kills = w.guild_2["kills"]
+                vs_guild = w.guild_1["id"]
+            for i in range(7):
+                if i == 6:
+                    var[6] += 1
+                    break
+                if kills >= MAX_KILLS - (i+1)*100:
+                    var[i] += 1
+                    if war_xp:
+                        guild_2 = await SMMOApi.get_guild_info(vs_guild)
+                        earnings[i] += max(int(guild_2.current_season_exp * MULTIPLIER), BASE_XP) + ((MAX_KILLS - w.guild_1["kills"]) * 50)
+                        
+            
+        if len(wars_list[str(guild.id)]) != 0:
+            msg = (f"{msg}*War that is about to **win***:\n"
+                    f"> War with more than **{MAX_KILLS-100}** kills: {var[0]} {f"(+ {earnings[0]:,} gxp)" if war_xp else ''}\n"
+                    f"> War with more than **{MAX_KILLS-200}** kills: {var[1]} {f"(+ {earnings[1]:,} gxp)" if war_xp else ''}\n"
+                    f"> War with more than **{MAX_KILLS-300}** kills: {var[2]} {f"(+ {earnings[2]:,} gxp)" if war_xp else ''}\n"
+                    f"> War with more than **{MAX_KILLS-400}** kills: {var[3]} {f"(+ {earnings[3]:,} gxp)" if war_xp else ''}\n"
+                    f"> War with more than **{MAX_KILLS-500}** kills: {var[4]} {f"(+ {earnings[4]:,} gxp)" if war_xp else ''}\n"
+                    f"> War with more than **{MAX_KILLS-600}** kills: {var[5]} {f"(+ {earnings[5]:,} gxp)" if war_xp else ''}\n"
+                    f"> *Other*: {var[6]}\n"
+                    )
+    else:
+        msg = f"{msg}> *They have no wars ongoing*\n"
+    if bo is not None:
+        msg = f"{msg}XP diff betweeen **{v.guild['name']}-{guild.name}**: {xp - v.experience:,}\n"
+    return msg
     
 
 async def make_members_lb(g_id,lb_date,current_date,task:bool=False,reverse:bool=False,live_stats:bool=True):
-        guild = await SMMOApi.get_guild_info(g_id)
-        if not guild:
-            logger.warning("Could not retrive guild data from API")
-            return None
-        date = get_date_game(lb_date)
-        season = await Database.select_last_season()
-        guild_data = await Database.select_guild_stats(g_id, date.year, date.month, date.day, season.id)
+    guild = await SMMOApi.get_guild_info(g_id)
+    if not guild:
+        logger.warning("Could not retrive guild data from API")
+        return None
+    date = get_date_game(lb_date)
+    season = await Database.select_last_season()
+    guild_data = await Database.select_guild_stats(g_id, date.year, date.month, date.day, season.id)
 
-        x: int = guild_data.experience if guild_data else guild.current_season_exp
-        total= [0, 0, 0, 0]
-        is_empty,guild_members = gen_is_empty(await SMMOApi.get_guild_members(g_id))
-        if is_empty:
-            logger.warning("Could not retrive guild members data from API")
-            return None
-        var = []
-        for m2 in guild_members:
-            m1 = await Database.select_user_stat(m2.user_id,date.year,date.month,date.day)
-            if m1 is not None:
-                if not live_stats:
-                    m_stats = await Database.select_user_stat(m2.user_id,current_date.year,current_date.month,current_date.day)
-                    if m_stats is not None:
-                        m2.level = m_stats.level
-                        m2.steps = m_stats.steps
-                        m2.npc_kills = m_stats.npc_kills
-                        m2.user_kills = m_stats.user_kills
-                var.append(
-                    {
-                        "id": m1.smmo_id,
-                        "levels": m2.level - m1.level,
-                        "steps": m2.steps - m1.steps,
-                        "npc_kills": m2.npc_kills - m1.npc_kills,
-                        "user_kills": m2.user_kills - m1.user_kills,
-                        "name": m2.name,
-                    }
-                )
-                total[0] += m2.steps - m1.steps
-                total[1] += m2.npc_kills - m1.npc_kills
-                total[2] += m2.user_kills - m1.user_kills
-                total[3] += m2.level - m1.level
-        
-        if len(var) == 0:
-            logger.warning("var empty: member data could not be processed")
-            return None
-        emb = Embed(
-            title=f"Members leaderboard",
-            description=f"**Guild**: {guild.name}\n"
-                        f"**Stats**: from <t:{int(current_date.timestamp())}> - <t:{int(current_date.timestamp() + 86400)}>\n"
-                        f"**Last update**: <t:{int(datetime.now().timestamp())}:R>\n"
-                        f"**Exp**: {guild.current_season_exp:,} (+{guild.current_season_exp - x:,})\n"
-                        f"**{season.name}** ending <t:{int(datetime.fromisoformat(season.ends_at[:-1]).timestamp())}:R> (<t:{int(datetime.fromisoformat(season.ends_at[:-1]).timestamp())}>)",
-            thumbnail=f"https://simple-mmo.com/img/icons/{guild.icon}",
-        )
-        category = {'steps':'Steps','npc_kills':'NPC','user_kills':'PVP','levels':'Levels'}
-
-        for i,val in enumerate(category.items()):
-                emb.add_field(
-                name=f"{val[1]} Total: {total[i]:,}:",
-                value="\n".join(
-                    f"[{x['name']}](https://simple-mmo.com/user/view/{x['id']}): {x[val[0]]:,}"
-                    for x in sorted(var, key=lambda member: -member[val[0]],reverse=reverse)[:5]
-                ),
-                inline=False,
+    x: int = guild_data.experience if guild_data else guild.current_season_exp
+    total= [0, 0, 0, 0]
+    is_empty,guild_members = gen_is_empty(await SMMOApi.get_guild_members(g_id))
+    if is_empty:
+        logger.warning("Could not retrive guild members data from API")
+        return None
+    var = []
+    for m2 in guild_members:
+        m1 = await Database.select_user_stat(m2.user_id,date.year,date.month,date.day)
+        if m1 is not None:
+            if not live_stats:
+                m_stats = await Database.select_user_stat(m2.user_id,current_date.year,current_date.month,current_date.day)
+                if m_stats is not None:
+                    m2.level = m_stats.level
+                    m2.steps = m_stats.steps
+                    m2.npc_kills = m_stats.npc_kills
+                    m2.user_kills = m_stats.user_kills
+            var.append(
+                {
+                    "id": m1.smmo_id,
+                    "levels": m2.level - m1.level,
+                    "steps": m2.steps - m1.steps,
+                    "npc_kills": m2.npc_kills - m1.npc_kills,
+                    "user_kills": m2.user_kills - m1.user_kills,
+                    "name": m2.name,
+                }
             )
-        if task:
-            emb.set_footer(text="Updated every 10 min")
-        return emb
+            total[0] += m2.steps - m1.steps
+            total[1] += m2.npc_kills - m1.npc_kills
+            total[2] += m2.user_kills - m1.user_kills
+            total[3] += m2.level - m1.level
+    
+    if len(var) == 0:
+        logger.warning("var empty: member data could not be processed")
+        return None
+    emb = Embed(
+        title=f"Members leaderboard",
+        description=f"**Guild**: {guild.name}\n"
+                    f"**Stats**: from <t:{int(current_date.timestamp())}> - <t:{int(current_date.timestamp() + 86400)}>\n"
+                    f"**Last update**: <t:{int(datetime.now().timestamp())}:R>\n"
+                    f"**Exp**: {guild.current_season_exp:,} (+{guild.current_season_exp - x:,})\n"
+                    f"**{season.name}** ending <t:{int(datetime.fromisoformat(season.ends_at[:-1]).timestamp())}:R> (<t:{int(datetime.fromisoformat(season.ends_at[:-1]).timestamp())}>)",
+        thumbnail=f"https://simple-mmo.com/img/icons/{guild.icon}",
+    )
+    category = {'steps':'Steps','npc_kills':'NPC','user_kills':'PVP','levels':'Levels'}
+
+    for i,val in enumerate(category.items()):
+            emb.add_field(
+            name=f"{val[1]} Total: {total[i]:,}:",
+            value="\n".join(
+                f"[{x['name']}](https://simple-mmo.com/user/view/{x['id']}): {x[val[0]]:,}"
+                for x in sorted(var, key=lambda member: -member[val[0]],reverse=reverse)[:5]
+            ),
+            inline=False,
+        )
+    if task:
+        emb.set_footer(text="Updated every 10 min")
+    return emb
 
 async def make_gains_emb():
     season = await Database.select_last_season()
