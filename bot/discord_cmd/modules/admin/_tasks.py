@@ -24,10 +24,6 @@ class AdminTask(Cog):
         self.activity_check.start()
         self.cleanup_msg.start()
         self.update_season.start()
-        
-        #import asyncio
-        #asyncio.run(self.create_new_daily_leaderboard())
-        #asyncio.run(self.set_new_gain_lb())
 
     def cog_unload(self) -> None:
         self.check_montly_reward.cancel()
@@ -75,7 +71,7 @@ class AdminTask(Cog):
                 message = await channel.fetch_message(msg.msg_id)
                 await message.delete()
             except NotFound:
-                logger.exception("cleanup")
+                logger.warning("cleanup")
                 continue
             except HTTPException:
                 logger.exception("cleanup")
@@ -162,7 +158,9 @@ class AdminTask(Cog):
         code = await Database.select_valut(date.year, date.month, date.day)
         if code is None:
             return
-        emb = helpers.Embed(title="Daily Vault Code", description='Go to "Town > Vault" to use the code')
+        emb = helpers.Embed(title="Daily Vault Code", 
+                            description='Go to "Town > Vault" to use the code',
+                            image="https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExNDFob2VteW92d3FzbHF5ZHNxMDc3Y2prMnJic2dmN3BudmRhZ2lyYiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/I7Il0qBnjThAI/giphy.gif")
 
         match len(str(code.code)):
             case 9:
@@ -184,27 +182,33 @@ class AdminTask(Cog):
         )
         if code.note is not None:
             emb.add_field(name="", value=code.note, inline=False)
-
+            
         valutmsg = await Database.select_valutmsg()
         for v in valutmsg:
             if v.status == 1:
+                if v.code != code.code:
+                    await helpers.get_channel_and_edit(self.client,v.channel_id,v.message_id,embed=emb)
                 continue
-            await helpers.get_channel_and_edit(self.client,v.channel_id,embed=emb)
+            del_after = int((date+timedelta(days=1)).timestamp()-datetime.now().timestamp())
+            msg = await helpers.get_channel_and_edit(self.client,v.channel_id,embed=emb,delete_after=del_after)
+            if isinstance(msg,bool):
+                continue
             if v.role_id is not None:
-                await helpers.get_channel_and_edit(self.client,v.channel_id,content=f"<@&{v.role_id}> Here the Vault Code!")
-            await Database.update_valutmsg(1, v.channel_id)
+                await helpers.get_channel_and_edit(self.client,v.channel_id,content=f"<@&{v.role_id}> Here the Vault Code!",delete_after=del_after)
+            await Database.update_valutmsg(1, v.channel_id, code.code,msg.id)
 
     @loop(time=time(hour=12))
     async def reset_valut_msg(self):
         valutmsg = await Database.select_valutmsg()
         for v in valutmsg:
-            await Database.update_valutmsg(0, v.channel_id)
+            await Database.update_valutmsg(0, v.channel_id, 0,0)
 
     @loop(time=time(hour=12))
     async def check_montly_reward(self):
         if datetime.now().day != 28:
             return
         pings = await Database.select_monthly_reward()
+        # TODO: make emb with link for monthly reward
         for ping in pings:
             await helpers.get_channel_and_edit(self.client,channel_id=ping.channel_id,content=f"<@&{ping.role_id}> time to get monthly reward!\nGo to Town > Mahols Hut > Monthly Reward, to reedem it.")
 
