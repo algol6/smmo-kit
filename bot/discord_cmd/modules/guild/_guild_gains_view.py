@@ -42,7 +42,7 @@ class GuildGainsView(discord.ui.View):
         msg: str = ""
         
         emb = helpers.Embed(title=f"{self.timeframe} guild gains",
-                            description=f"**Stats**: from <t:{int(self.date.timestamp())}> to <t:{int(self.to_date.timestamp() + 86400)}>\n"
+                            description=f"**Stats**: from <t:{int(self.date.timestamp())}> to <t:{int(self.to_date.timestamp())}>\n"
                                         f"**Last update**: <t:{self.last_update}:R>\n"
                                         f"**Season**: {self.season.id}\n"
                                         f"**Season Ending**: <t:{int(datetime.fromisoformat(self.season.ends_at[:-1]).timestamp())}>")
