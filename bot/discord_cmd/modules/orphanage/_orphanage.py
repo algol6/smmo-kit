@@ -40,18 +40,23 @@ class Orphanage(commands.Cog):
                 t = 3
             case _:
                 t = 0
+        if t == 0:
+            for i in range(1,4):
+                if not await Database.insert_orphanage(channel.id,None,role.id,i,active=0):
+                    return await helpers.send(ctx,content="This is already configured")
+            return await helpers.send(ctx,content=f"Orphanage tier {tier} set up.")
         if not await Database.insert_orphanage(channel.id,None,role.id,t,active=0):
             return await helpers.send(ctx,content="This is already configured")
         await helpers.send(ctx,content=f"Orphanage tier {tier} set up.")
 
     @subcommand("admin orphanage")
-    @slash_command(description="Remove orphanage ping from a channel.")
+    @slash_command(description="Remove all orphanage pings from a channel.")
     @guild_only()
     @option(name="channel", description="Define the channel where was set up the messages. default: current channel")
     @permissions.require_admin_or_staff()
     @command_utils.auto_defer()
     @command_utils.took_too_long()
-    async def remove(self,ctx:ApplicationContext,tier:int,channel:TextChannel=None) -> None:
+    async def remove(self,ctx:ApplicationContext,channel:TextChannel=None) -> None:
         if channel is None:
             channel = ctx.channel
         await Database.delete_orphanage(channel.id)

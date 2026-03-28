@@ -4,22 +4,32 @@ from bot.discord_cmd.helpers import helpers
 from bot.discord_cmd.helpers.logger import logger
 from bot.database import Database
 from bot.api import SMMOApi,ApiError
-from datetime import datetime
+from datetime import datetime, time
 
 class OrphanageTask(commands.Cog):
     def __init__(self, client) -> None:
         self.client = client
         self.check_orphanage.start()
+        self.toggle_orph.start()
 
     def cog_unload(self):
         self.check_orphanage.cancel()
+        self.toggle_orph.cancel()
+
+    @tasks.loop(time=time(hour=12))
+    async def toggle_orph(self):
+        self.check_orphanage.start()
 
     @tasks.loop(minutes=5.0)
     async def check_orphanage(self):
         try:
             orphanage_data = tuple(await SMMOApi.get_orphanage())
+            print(orphanage_data[2])
         except ApiError:
             return
+        if orphanage_data[2].has_expired:
+            self.check_orphanage.stop()
+        
         orphanage_db = await Database.select_orphanage()
         emb = None
         channels_id = set()
@@ -49,12 +59,15 @@ class OrphanageTask(commands.Cog):
                                         bar=f"{temp}{(BAR_LENGHT - ntemp) * ":small_blue_diamond:"}",
                                         percentage=orphanage_data[i].percentage,
                                         x=orphanage_data[i].current_value,
-                                        y=orphanage_data[i].target_value,status=temp_status) + (TEMPLATES[1].format(
-                                            bonuses="\n> ".join(orphanage_data[i].effects),
-                                            actived_time=f"<t:{int(datetime.fromisoformat(orphanage_data[i].goal_reached_at).timestamp())}:R>" if orphanage_data[i].is_active else "Not yet",
-                                            expiring_time1=f"<t:{int(datetime.fromisoformat(orphanage_data[i].goal_reached_at).timestamp() + 7200)}:R>" if orphanage_data[i].is_active else "Not yet",
-                                            expiring_time2=f"(<t:{int(datetime.fromisoformat(orphanage_data[i].goal_reached_at).timestamp() + 7200)}>)" if orphanage_data[i].is_active else "+ 1"
-                                            ) if orphanage_data[i].is_active else ""),
+                                        y=orphanage_data[i].target_value,status=temp_status) + 
+                                            (
+                                                TEMPLATES[1].format(
+                                                    bonuses="\n> ".join(orphanage_data[i].effects),
+                                                    actived_time=f"<t:{int(datetime.fromisoformat(orphanage_data[i].goal_reached_at).timestamp())}:R>",
+                                                    expiring_time1=f"<t:{int(datetime.fromisoformat(orphanage_data[i].goal_reached_at).timestamp() + 7200)}:R>",
+                                                    expiring_time2=f"(<t:{int(datetime.fromisoformat(orphanage_data[i].goal_reached_at).timestamp() + 7200)}>)"
+                                                ) if orphanage_data[i].is_active else ""
+                                            ),
                                         inline=False)
                     emb.set_footer(text=f"Updated every 5 minutes")
                 if notification_config.channel_id not in channels_id:
@@ -72,13 +85,13 @@ class OrphanageTask(commands.Cog):
                                                                 channel_id=notification_config.channel_id,
                                                                 message_id=notification_config.message_id,
                                                                 embed=emb)
-                if notification_config.tier != 0 and notification_config.tier != int(tier):
+                if notification_config.tier != int(tier):
                     continue
                 if notification_config.active != 1 and tier_data.is_active:
                     await helpers.get_channel_and_edit(self.client,
                                                         notification_config.channel_id,
                                                         content=f"<@&{notification_config.role_id}>\nOrphanage **tier {tier}** is now active.",
-                                                        delete_after=int(datetime.fromisoformat(orphanage_data[i].goal_reached_at).timestamp() + 7200)-datetime.now().timestamp())
+                                                        delete_after=int(datetime.fromisoformat(tier_data.goal_reached_at).timestamp() + 7200)-datetime.now().timestamp())
                 if not await Database.update_orphanage_active(notification_config.channel_id,notification_config.tier,int(tier_data.is_active)):
                     logger.warning("Couldn't update orphanage status")
         
