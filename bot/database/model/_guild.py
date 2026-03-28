@@ -1,6 +1,14 @@
 from dataclasses import dataclass
 
 @dataclass
+class JoinConf:
+    guild_id: int
+    msg: str
+    groles: str
+    vroles: str
+    channel: int
+    
+@dataclass
 class GuildStats:
     year: int
     month: int
