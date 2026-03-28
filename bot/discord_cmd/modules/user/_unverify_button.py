@@ -12,14 +12,15 @@ class UnverifyButton(discord.ui.View):
     @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green)
     async def confirm_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         await Database.delete_user(self.user_id)
+        logger.info("User unverified: %s", self.discord_user)
         self.disable_all_items()
         await interaction.response.edit_message(embed=helpers.Embed(title="Profile unlinked"),view=self)
-        self.message.delete(delay=10)
+        await self.message.delete(delay=10)
         
     
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancell_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         self.disable_all_items()
         await interaction.response.edit_message(embed=helpers.Embed(title="Operation cancelled"),view=self)
-        self.message.delete(delay=10)
+        await self.message.delete(delay=10)
 
