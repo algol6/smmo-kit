@@ -22,14 +22,21 @@ class Utility(commands.Cog):
     @command_utils.took_too_long()
     async def vault(self,ctx:ApplicationContext,set_code:str=None,set_temple:str=None) -> None:
         date = helpers.get_current_date_game()
-        if set_code is not None and helpers.is_number(set_code):
+        if (set_code is not None and helpers.is_number(set_code)) or set_temple is not None:
+            if set_code is None:
+                try:
+                    set_code = (await Database.select_valut(date.year,date.month,date.day)).code.split(":")[0]
+                except:
+                    pass
             code = f"{set_code}:{set_temple if set_temple else ""}"
-            await Database.insert_valut(code,date.year,date.month,date.day,"")
+            await Database.delete_all_valut()
+            if await Database.insert_valut(code,date.year,date.month,date.day,""):
+                await ctx.followup.send("Code Added/Updated")
         code = await Database.select_valut(date.year,date.month,date.day)
         if code is None:
             return await helpers.send(ctx,content="No code added for today, try again later")
         emb = helpers.Embed(title="Daily Vault Code",description='Go to "Town>Vault" to use the code')
-        code = code.split(":")
+        code.code = code.code.split(":")
         match len(str(code.code[0])):
             case 9:
                 bonuses = 15
