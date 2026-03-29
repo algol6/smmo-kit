@@ -16,7 +16,7 @@ class OrphanageTask(commands.Cog):
         self.check_orphanage.cancel()
         self.toggle_orph.cancel()
 
-    @tasks.loop(time=time(hour=12))
+    @tasks.loop(time=time(hour=12, minute=30))
     async def toggle_orph(self):
         self.check_orphanage.start()
 
@@ -24,7 +24,6 @@ class OrphanageTask(commands.Cog):
     async def check_orphanage(self):
         try:
             orphanage_data = tuple(await SMMOApi.get_orphanage())
-            print(orphanage_data[2])
         except ApiError:
             return
         if orphanage_data[2].has_expired:
