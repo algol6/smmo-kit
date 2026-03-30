@@ -18,6 +18,8 @@ class OrphanageTask(commands.Cog):
 
     @tasks.loop(time=time(hour=12, minute=30))
     async def toggle_orph(self):
+        if self.check_orphanage.is_running():
+            return
         self.check_orphanage.start()
 
     @tasks.loop(minutes=5.0)
