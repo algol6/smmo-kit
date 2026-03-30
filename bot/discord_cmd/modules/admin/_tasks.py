@@ -19,8 +19,6 @@ class AdminTask(Cog):
         self.update_gains_lb.start()
         self.create_new_daily_leaderboard.start()
         self.update_leaderboards.start()
-        self.reset_valut_msg.start()
-        self.check_valut_code.start()
         self.activity_check.start()
         self.cleanup_msg.start()
         self.update_season.start()
@@ -31,8 +29,6 @@ class AdminTask(Cog):
         self.update_gains_lb.cancel()
         self.create_new_daily_leaderboard.cancel()
         self.update_leaderboards.cancel()
-        self.reset_valut_msg.cancel()
-        self.check_valut_code.cancel()
         self.activity_check.cancel()
         self.cleanup_msg.cancel()
         self.update_season.cancel()
@@ -151,69 +147,6 @@ class AdminTask(Cog):
             if not await helpers.get_channel_and_edit(self.client,d.channel_id,d.message_id,embed=emb):
                 logger.info("Removing a member lb cause: channel not found: %s",d.channel_id)
                 await Database.delete_lb(d.channel_id)
-
-    @loop(minutes=5)
-    async def check_valut_code(self):
-        date = helpers.get_current_date_game()
-        vault = await Database.select_valut(date.year, date.month, date.day)
-        if vault is None:
-            return
-        valutmsg = await Database.select_valutmsg()
-        emb = None
-        del_after = int((date+timedelta(days=1)).timestamp()-datetime.now().timestamp())
-        for v in valutmsg:
-            if emb is None:
-                ct = vault.code.split(":")
-                emb = helpers.Embed(title="Daily Vault Code", 
-                            description='Go to "Town > Vault" to use the code',
-                            image="https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExNDFob2VteW92d3FzbHF5ZHNxMDc3Y2prMnJic2dmN3BudmRhZ2lyYiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/I7Il0qBnjThAI/giphy.gif")
-                match len(ct[0]):
-                    case 9:
-                        bonuses = 15
-                    case 10:
-                        bonuses = 20
-                    case 11:
-                        bonuses = 25
-                    case 12:
-                        bonuses = 40
-                    case _:
-                        bonuses = 10
-
-                emb.add_field(name="Code", value=ct[0], inline=False)
-                emb.add_field(
-                    name="Bonus:",
-                    value=f"**{bonuses}**% on BA, Steps, PVP, Quests and Professions",
-                    inline=False
-                )
-                if ct[1] != "":
-                    emb.add_field(name="Temple Items:",
-                            value=ct[1],
-                            inline=False
-                            )
-                if vault.note is not None:
-                    emb.add_field(name="", value=vault.note, inline=False)
-            if v.status == 1:
-                if v.code != vault.code:
-                    msg = await helpers.get_channel_and_edit(self.client,v.channel_id,v.message_id,embed=emb)
-                    if isinstance(msg,bool):
-                        continue
-                    await Database.update_valutmsg(1, v.channel_id, vault.code,msg.id)
-                continue
-            msg = await helpers.get_channel_and_edit(self.client,v.channel_id,embed=emb,delete_after=del_after)
-            if isinstance(msg,bool):
-                continue
-            if v.role_id is not None:
-                await helpers.get_channel_and_edit(self.client,v.channel_id,content=f"<@&{v.role_id}> Here the Vault Code!",delete_after=del_after)
-            await Database.update_valutmsg(1, v.channel_id, vault.code,msg.id)
-        
-            
-        
-
-    @loop(time=time(hour=12))
-    async def reset_valut_msg(self):
-        valutmsg = await Database.select_valutmsg()
-        for v in valutmsg:
-            await Database.update_valutmsg(0, v.channel_id, 0,0)
 
     @loop(time=time(hour=12))
     async def check_montly_reward(self):
