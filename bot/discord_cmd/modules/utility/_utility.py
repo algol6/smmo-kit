@@ -14,6 +14,64 @@ from re import findall
 class Utility(commands.Cog):
     def __init__(self, client):
         self.client = client
+
+    def make_vault_emb(self, vault) -> helpers.Embed:
+        ct = vault.code.split(":")
+        emb = helpers.Embed(title="Daily Vault Code", 
+                    description='Go to "Town > Vault" to use the code',
+                    image="https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExNDFob2VteW92d3FzbHF5ZHNxMDc3Y2prMnJic2dmN3BudmRhZ2lyYiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/I7Il0qBnjThAI/giphy.gif")
+        match len(ct[0]):
+            case 9:
+                bonuses = 15
+            case 10:
+                bonuses = 20
+            case 11:
+                bonuses = 25
+            case 12:
+                bonuses = 40
+            case _:
+                bonuses = 10
+
+        emb.add_field(name="Code", value=ct[0], inline=False)
+        emb.add_field(
+            name="Bonus:",
+            value=f"**{bonuses}**% on BA, Steps, PVP, Quests and Professions",
+            inline=False
+        )
+        if ct[1] != "":
+            emb.add_field(name="Temple Items:",
+                    value=ct[1],
+                    inline=False
+                    )
+        if vault.note is not None:
+            emb.add_field(name="", value=vault.note, inline=False)
+        
+        return emb
+
+    async def share_vault_code(self):
+        date = helpers.get_current_date_game()
+        vault = await Database.select_valut(date.year, date.month, date.day)
+        if vault is None:
+            return
+        valutmsg = await Database.select_valutmsg()
+        emb = None
+        del_after = int((date+timedelta(days=1)).timestamp()-datetime.now().timestamp())
+        for v in valutmsg:
+            if emb is None:
+                emb = self.make_vault_emb(vault)
+            if v.status == 1:
+                if v.code != vault.code:
+                    msg = await helpers.get_channel_and_edit(self.client,v.channel_id,v.message_id,embed=emb)
+                    if isinstance(msg,bool):
+                        continue
+                    await Database.update_valutmsg(1, v.channel_id, vault.code,msg.id)
+                continue
+            msg = await helpers.get_channel_and_edit(self.client,v.channel_id,embed=emb,delete_after=del_after)
+            if isinstance(msg,bool):
+                continue
+            if v.role_id is not None:
+                await helpers.get_channel_and_edit(self.client,v.channel_id,content=f"<@&{v.role_id}> Here the Vault Code!",delete_after=del_after)
+            await Database.update_valutmsg(1, v.channel_id, vault.code,msg.id)
     
     @slash_command(description="Show or set vault code")
     @guild_only()
@@ -32,38 +90,11 @@ class Utility(commands.Cog):
             await Database.delete_all_valut()
             if await Database.insert_valut(code,date.year,date.month,date.day,""):
                 await ctx.followup.send("Code Added/Updated")
-        code = await Database.select_valut(date.year,date.month,date.day)
-        if code is None:
+            await self.share_vault_code()
+        vault = await Database.select_valut(date.year,date.month,date.day)
+        if vault is None:
             return await helpers.send(ctx,content="No code added for today, try again later")
-        emb = helpers.Embed(title="Daily Vault Code",description='Go to "Town>Vault" to use the code')
-        code.code = code.code.split(":")
-        match len(str(code.code[0])):
-            case 9:
-                bonuses = 15
-            case 10:
-                bonuses = 20
-            case 11:
-                bonuses = 25
-            case 12:
-                bonuses = 40
-            case _:
-                bonuses = 10
-
-        emb.add_field(name="Code",
-                      value=f"{code.code[0]}",
-                      inline=False)
-        emb.add_field(name="Bonus:",
-                      value=f"**{bonuses}**% on BA, Steps, PVP, Quests and Professions",
-                      inline=False
-                      )
-        if code.code[1] != "":
-            emb.add_field(name="Temple Items:",
-                      value=code.code[1],
-                      inline=False
-                      )
-        if code.note is not None:
-            emb.add_field(name="",value=code.note,inline=False)
-
+        emb = self.make_vault_emb(vault)
         await helpers.send(ctx,embed=emb)
 
     @slash_command(description="Calculate the ba needed to reach x level")
