@@ -29,6 +29,8 @@ client.load_extension("bot.discord_cmd.modules.event")
 client.load_extension("bot.discord_cmd.modules.utility")
 client.load_extension("bot.discord_cmd.modules.worldboss")
 client.load_extension("bot.discord_cmd.modules.extra")
+client.load_extension("bot.discord_cmd.modules.community")
+#client.load_extension("bot.discord_cmd.modules.trial")
 
 
 @client.event
@@ -60,14 +62,13 @@ async def on_member_join(member):
     conf = await Database.select_join_roles(member.guild.id)
     if conf is None:
         return
-    print(conf)
     if conf.msg != "":
         try:
             channel = await client.get_channel(conf.channel)
             msg = await channel.send(content=conf.msg,delete_after=500)
         except:
             pass
-    player = await helpers.get_user(user=member.id)
+    player = await helpers.get_user(user=member)
     if player is None:
         try:
             msg = await channel.send(content="> To automatically get roles link with the bot using '/user verify' and following the instructions or ask to the moderators.",delete_after=500)
