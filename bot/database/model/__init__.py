@@ -9,3 +9,4 @@ from ._monthly_reward import MonthlyRewards
 from ._diamond import Diamond
 from ._utility import ApiKey,Staff
 from ._community import Market,MarketNotice,MarketNoticeItem
+from ._trial import Trial,TrialCategory,TrialRecord,TrialTask,TrialTaskRequisite,TrialUser
