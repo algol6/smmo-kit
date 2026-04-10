@@ -388,9 +388,8 @@ class Guild(Cog):
         if guild_id is None:
             guild_id = await Database.select_server(ctx.guild_id)
         if from_date:
-            try:
-                s_date = datetime.strptime(from_date, "%d/%m/%Y")
-            except:
+            s_date = helpers.get_date_game(from_date)
+            if s_date is None:
                 return await helpers.send(ctx,content="Wrong date format. use dd/mm/yyyy format")
         else:
             s_date = helpers.get_date_game(timeframe)
@@ -400,9 +399,8 @@ class Guild(Cog):
             if timeframe != "Yesterday":
                 e_date += timedelta(days=1)
         else:
-            try:
-                e_date = datetime.strptime(to_date, "%d/%m/%Y")
-            except:
+            e_date = helpers.get_date_game(to_date)
+            if e_date is None:
                 return await helpers.send(ctx,content="Wrong date format. use dd/mm/yyyy format")
 
         members = await SMMOApi.get_guild_members(guild_id)
@@ -429,17 +427,15 @@ class Guild(Cog):
                 index = 6
             else:
                 index = 7
-
+            
             da[index][0].append({"name":m.name, "stats": d2.npc_kills - d1.npc_kills, "id":d1.smmo_id})
-            da[0][0].append({"name":m.name, "stats": d2.npc_kills - d1.npc_kills, "id":d1.smmo_id})
-
             da[index][1].append({"name":m.name, "stats": d2.user_kills - d1.user_kills, "id":d1.smmo_id})
-            da[0][1].append({"name":m.name, "stats": d2.user_kills - d1.user_kills, "id":d1.smmo_id})
-
             da[index][2].append({"name":m.name, "stats": d2.steps - d1.steps, "id":d1.smmo_id})
-            da[0][2].append({"name":m.name, "stats": d2.steps - d1.steps, "id":d1.smmo_id})
-
             da[index][3].append({"name":m.name, "stats": d2.level - d1.level if d2.level - d1.level >= 0 else d2.level, "id":d1.smmo_id})
+
+            da[0][0].append({"name":m.name, "stats": d2.npc_kills - d1.npc_kills, "id":d1.smmo_id})
+            da[0][1].append({"name":m.name, "stats": d2.user_kills - d1.user_kills, "id":d1.smmo_id})
+            da[0][2].append({"name":m.name, "stats": d2.steps - d1.steps, "id":d1.smmo_id})
             da[0][3].append({"name":m.name, "stats": d2.level - d1.level if d2.level - d1.level >= 0 else d2.level, "id":d1.smmo_id})
  
         if all(len(x)==0 for x in da):
