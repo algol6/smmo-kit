@@ -1,5 +1,5 @@
 from discord import ApplicationContext, slash_command, Bot, guild_only, option, TextChannel, Forbidden, User, Member
-from discord.ext import tasks, commands
+from discord.ext import commands
 from pycord.multicog import subcommand
 
 from bot.api import SMMOApi
