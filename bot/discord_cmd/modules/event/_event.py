@@ -346,20 +346,6 @@ class Events(commands.Cog):
         evt_view.event_teams = [(k,sum(y["stats"] for y in event_teams[k]), [x["player"] for x in event_teams[k]]) for k in sorted(event_teams, key=lambda item: sum(x["stats"] for x in event_teams[item]), reverse=True)]
         await evt_view.send(ctx)
     
-    # @subcommand("smmo event")
-    # @slash_command(description="Register to an event", guild_ids=[1175190899182030888,1319980713541505044])
-    # @command_utils.auto_defer()
-    # async def partecipate(self, ctx: ApplicationContext, smmo_id:int = None):
-    #     if smmo_id is None:
-    #         p = await Database.get_user(ctx.user.id)
-    #         if p.smmo_id is not None:
-    #             smmo_id = p.smmo_id
-    #         else:
-    #             await ctx.followup.send(content="Your account is not linked, link using `/smmo user link SMMO_ID` or add the smmo_id to the command parameter")
-    #             return
-        
-    #     # do a view with a choosable option witch show what events are on/ will be on
-    
     @subcommand("event")
     @slash_command(description="Show your team's stats")
     @guild_only()
@@ -464,115 +450,6 @@ class Events(commands.Cog):
         if ended:
             emb.set_footer(text="*Event Ended*")
         return await ctx.followup.send(embed=emb)
-
-    
-    
-    # @tasks.loop(time=time(hour=12))
-    # async def create_new_daily_leaderboard(self):
-    #     data = await Database.select_all_event_lb()
-    #     event = await Database.select_all_events(int(datetime.now().timestamp()))
-    #     dat = []
-    #     for e,d in zip(event,data):
-    #         if e.id == d.event_id:
-    #             if e.start_data <= datetime.now().timestamp() and e.end_data > datetime.now().timestamp():
-    #                 dat.append(d)
-    #     for d in data:
-    #         try:
-    #             channel = await self.client.fetch_channel(d.channel_id)
-    #         except discord.errors.NotFound:
-    #             continue
-    #         except discord.errors.Forbidden:
-    #             continue
-
-
-        # partecipants = await Database.select_event_team(data.event_id,data.guild_id)
-        # msg: str = ""
-        # emb = command_utils.Embed(title=f"{event.name}", description=f"Updated: <t:{int(datetime.now().timestamp())}:R>")
-        # values = set(map(lambda x:x.team, partecipants))
-        # ppppp = [[y for y in partecipants if y.team==x] for x in values]
-        # guild_membets = await SMMOApi.get_guild_members(event.guild_id)
-        # var = []
-        # for pp in ppppp:
-        #     var.append([])
-        #     for p in pp:
-        #         try:
-        #             if not any(x.user_id == p.smmo_id for x in guild_membets):
-        #                 continue
-        #             player = await SMMOApi.get_player_info(p.smmo_id)
-        #             stats = await Database.get_event_stats(smmo_id=p.smmo_id,event_id=data.event_id,time=Database.get_current_day_start())
-        #             stats2 = await Database.get_event_stats(smmo_id=p.smmo_id,event_id=data.event_id,time=Database.get_current_day_start(1))
-        #             stats3 = await Database.get_event_stats(smmo_id=p.smmo_id,event_id=data.event_id,time=event.start_data)
-        #             var[-1].append({"name":player.name,"id":player.id, "team": p.team})
-        #             yest = 0
-        #             if event.event_type == "GXP":
-        #                 contr = await SMMOApi.get_guild_member_contribution(3075, p.smmo_id)
-        #                 var[-1][-1]["stat"] = contr.pve_exp + (player.steps * 3) + contr.pvp_exp - stats3[0].stats
-        #                 yest = contr.pve_exp + (player.steps * 3) + contr.pvp_exp
-        #             elif event.event_type == "NPC":
-        #                 var[-1][-1]["stat"] = player.npc_kills - stats3[0].stats
-        #                 yest = player.npc_kills
-        #             elif event.event_type == "PVP":
-        #                 var[-1][-1]["stat"] = player.user_kills - stats3[0].stats
-        #                 yest = player.user_kills
-        #             elif event.event_type == "Steps":
-        #                 var[-1][-1]["stat"] = player.steps - stats3[0].stats
-        #                 yest = player.steps
-        #             elif event.event_type == "Levels":
-        #                 var[-1][-1]["stat"] = player.level - stats3[0].stats
-        #                 yest = player.level
-        #             if len(stats2) != 0:
-        #                 var[-1][-1]["ys"] = yest - stats[0].stats
-        #         except Exception as e:
-        #             print(f"Error on update stats event {p}\n{e}")
-
-        # var = [sorted(v, key=lambda item: -item["stat"]) for v in var]
-        # var = sorted(var, key=lambda item: -sum([v["stat"] for v in item]))
-
-        # for i,v in enumerate(var):
-        #     for k in v:
-        #         msg = f"{msg}[{k["name"]}](https://simple-mmo.com/user/view/{k["id"]}): {format(k["stat"],",d")} {f"(+{format(k["ys"],",d")})\n" if "ys" in k else "\n"}"
-    
-        #     emb.add_field(name=f"#{i+1} Team {v[0]["team"]} - {format(sum([k["stat"] for k in v]),",d")}",
-        #                 value=msg,
-        #                 inline=False)
-        #     msg = ""
-        
-        # emb.set_footer(text="Update every hour")
-
-        # return emb
-    
-    # @tasks.loop(time=time(hour=12))
-    # async def update_event_stats(self):
-    #     print("TASK STARTED-ues")
-    #     events = await Database.get_all_events()
-    #     for e in events:
-    #         if e.start_data >= datetime.now().timestamp() or e.end_data <= datetime.now().timestamp():
-    #             continue
-    #         partecipants = await Database.get_all_event_teams(e.id)
-    #         for p in partecipants:
-    #             try:
-    #                 player = await SMMOApi.get_player_info(p.smmo_id)
-    #                 if player is None:
-    #                     continue
-    #                 stats: int = 0
-    #                 if e.event_type == "GXP":
-    #                     data = await SMMOApi.get_guild_member_contribution(3075, p.smmo_id)
-    #                     stats = data.pve_exp + (player.steps * 3) + data.pvp_exp
-    #                 elif e.event_type == "NPC":
-    #                     stats = player.npc_kills
-    #                 elif e.event_type == "PVP":
-    #                     stats = player.user_kills
-    #                 elif e.event_type == "Steps":
-    #                     stats = player.steps
-    #                 elif e.event_type == "Levels":
-    #                     stats = player.level
-    #                 elif e.event_type == "Quests":
-    #                     stats = player.quests_performed
-    #                 await Database.set_event_stats(e.id, p.smmo_id, stats=stats, start_date=Database.get_current_day_start(), end_date=Database.get_current_day_start()+86400)
-    #             except Exception as e:
-    #                 print(f"Error on saving event stats {p}\n{e}")
-    #                 continue
-    #     print("TASK ENDED-ues")
 
 def setup(client:Bot):
     client.add_cog(Events(client))
