@@ -11,6 +11,8 @@ class CommandGroups(commands.Cog):
     guild_subgroup = group_admin.create_subgroup("guilds")
     worldboss_subgroup = group_admin.create_subgroup("worldboss")
     event_subgroup = group_admin.create_subgroup("event")
+    market_subgroup = group_admin.create_subgroup("market")
+    quest_subgroup = group_admin.create_subgroup("quest")
     
     group_user = SlashCommandGroup(name="user", description="Users commands")
 
@@ -26,7 +28,9 @@ class CommandGroups(commands.Cog):
 
     group_event = SlashCommandGroup(name="event", description="Events public commands")
 
-    group_sg = SlashCommandGroup(name="sg", description="Shadow Garden exclusive commands")
+    group_market = SlashCommandGroup(name="market", description="Player Market")
+
+    group_quest = SlashCommandGroup(name="quest", description="Guild Quest")
 
     def __init__(self, client):
         self.client = client
