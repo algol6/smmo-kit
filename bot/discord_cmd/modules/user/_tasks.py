@@ -13,8 +13,8 @@ class UsersTask(Cog):
     def __init__(self, client):
         self.client = client
         self.check_stats.start()
-        # import asyncio
-        # asyncio.run(self.check_stats())
+        #import asyncio
+        #asyncio.run(self.check_stats())
 
     def cog_unload(self):
         self.check_stats.cancel()
