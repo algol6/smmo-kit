@@ -1,4 +1,4 @@
-from discord import ApplicationContext, slash_command, guild_only,option
+from discord import ApplicationContext, slash_command, guild_only,option,TextChannel,Forbidden,HTTPException
 from discord.ext import commands
 from pycord.multicog import subcommand
 
@@ -6,6 +6,8 @@ from bot.api import SMMOApi
 from bot.database import Database
 from bot.discord_cmd.helpers import command_utils, permissions,helpers
 from bot.discord_cmd.helpers.logger import logger
+
+from datetime import timedelta,datetime
 
 from time import strftime, gmtime
 from math import ceil
@@ -59,19 +61,27 @@ class Utility(commands.Cog):
         for v in valutmsg:
             if emb is None:
                 emb = self.make_vault_emb(vault)
-            if v.status == 1:
-                if v.code != vault.code:
-                    msg = await helpers.get_channel_and_edit(self.client,v.channel_id,v.message_id,embed=emb)
+            if v.code != vault.code:
+                try:
+                    channel = await self.client.get_or_fetch(TextChannel,v.channel_id)
+                    message = await channel.fetch_message(v.message_id)
                     if isinstance(msg,bool):
                         continue
-                    await Database.update_valutmsg(1, v.channel_id, vault.code,msg.id)
-                continue
+                    await Database.update_valutmsg(1,v.channel_id,vault.code,msg.id)
+                    continue
+                except AttributeError:
+                    pass
+                except Forbidden:
+                    logger.warning("Channel forbidden: %s:%s",channel_id,message_id)
+                    continue
+                except HTTPException:
+                    pass
             msg = await helpers.get_channel_and_edit(self.client,v.channel_id,embed=emb,delete_after=del_after)
             if isinstance(msg,bool):
                 continue
             if v.role_id is not None:
                 await helpers.get_channel_and_edit(self.client,v.channel_id,content=f"<@&{v.role_id}> Here the Vault Code!",delete_after=del_after)
-            await Database.update_valutmsg(1, v.channel_id, vault.code,msg.id)
+            await Database.update_valutmsg(1,v.channel_id,vault.code,msg.id)
     
     @slash_command(description="Show or set vault code")
     @guild_only()
@@ -80,6 +90,7 @@ class Utility(commands.Cog):
     @command_utils.took_too_long()
     async def vault(self,ctx:ApplicationContext,set_code:str=None,set_temple:str=None) -> None:
         date = helpers.get_current_date_game()
+        code_added = False
         if (set_code is not None and helpers.is_number(set_code)) or set_temple is not None:
             if set_code is None:
                 try:
@@ -89,13 +100,13 @@ class Utility(commands.Cog):
             code = f"{set_code}:{set_temple if set_temple else ""}"
             await Database.delete_all_valut()
             if await Database.insert_valut(code,date.year,date.month,date.day,""):
-                await ctx.followup.send("Code Added/Updated")
+                code_added = True
             await self.share_vault_code()
         vault = await Database.select_valut(date.year,date.month,date.day)
         if vault is None:
             return await helpers.send(ctx,content="No code added for today, try again later")
         emb = self.make_vault_emb(vault)
-        await helpers.send(ctx,embed=emb)
+        await helpers.send(ctx,embed=emb,content="" if not code_added else "Code Added/Updated")
 
     @slash_command(description="Calculate the ba needed to reach x level")
     @guild_only()
@@ -108,29 +119,26 @@ class Utility(commands.Cog):
     async def bacalc(self, ctx:ApplicationContext, rank:str, target_level:int = None, boost_percentage:int = 0, starting_level:int=None, energy_point:int=None,npc:int=None) -> None:
         if target_level is None and npc is None:
             return await helpers.send(ctx,content="Insert a target level (target_level) or the amount of npc to kill (npc)")
-        mult: float = 0.0
-        cost: int = 0
-        color = 0x000000
-        icon = ""
-        rank_data = {
-                        "Copper": {"mult": 2.0, "cost": 1000, "color": 0xf8922f, "icon": "https://simple-mmo.com/img/icons/battlearena/1.png"},
-                        "Bronze": {"mult": 2.2, "cost": 2500, "color": 0xe39f62, "icon": "https://simple-mmo.com/img/icons/battlearena/2.png"},
-                        "Silver": {"mult": 2.4, "cost": 6000, "color": 0x9fa6b4, "icon": "https://simple-mmo.com/img/icons/battlearena/3.png"},
-                        "Gold": {"mult": 2.6, "cost": 9375, "color": 0xe6c53a, "icon": "https://simple-mmo.com/img/icons/battlearena/4.png"},
-                        "Platinum": {"mult": 3.0, "cost": 11250, "color": 0xa8aade, "icon": "https://simple-mmo.com/img/icons/battlearena/5.png"},
-                        "Titanium": {"mult": 3.5, "cost": 13750, "color": 0xdf7676, "icon": "https://simple-mmo.com/img/icons/battlearena/6.png"},
-                        "7th Circle": {"mult": 4.0, "cost": 16250, "color": 0xec1b04, "icon": "https://simple-mmo.com/img/icons/S_Fire08.png"},
-                        "Ragnarok": {"mult": 4.5, "cost": 18750, "color": 0x6d0b52, "icon": "https://simple-mmo.com/img/icons/two/32px/RuneStone17_32.png"},
-                        "Mount Olympus": {"mult": 5.0, "cost": 21250, "color": 0x9c5048, "icon": "https://simple-mmo.com/img/icons/S_Earth07.png"},
-                        "Rapture": {"mult": 5.5, "cost": 27000, "color": 0xac6d28, "icon": "https://simple-mmo.com/img/icons/one/icon174.png"},
-                        "Nirvana": {"mult": 6.0, "cost": 34500, "color": 0xfafaee, "icon": "https://simple-mmo.com/img/icons/one/icon130.png"}
-                    }
+        MOE:int = 125
+        MOE_PLEB:int = 180
+        RANK_DATA = {
+            "Copper": {"mult": 2.0, "cost": 1000, "color": 0xf8922f, "icon": "https://simple-mmo.com/img/icons/battlearena/1.png"},
+            "Bronze": {"mult": 2.2, "cost": 2500, "color": 0xe39f62, "icon": "https://simple-mmo.com/img/icons/battlearena/2.png"},
+            "Silver": {"mult": 2.4, "cost": 6000, "color": 0x9fa6b4, "icon": "https://simple-mmo.com/img/icons/battlearena/3.png"},
+            "Gold": {"mult": 2.6, "cost": 9375, "color": 0xe6c53a, "icon": "https://simple-mmo.com/img/icons/battlearena/4.png"},
+            "Platinum": {"mult": 3.0, "cost": 11250, "color": 0xa8aade, "icon": "https://simple-mmo.com/img/icons/battlearena/5.png"},
+            "Titanium": {"mult": 3.5, "cost": 13750, "color": 0xdf7676, "icon": "https://simple-mmo.com/img/icons/battlearena/6.png"},
+            "7th Circle": {"mult": 4.0, "cost": 16250, "color": 0xec1b04, "icon": "https://simple-mmo.com/img/icons/S_Fire08.png"},
+            "Ragnarok": {"mult": 4.5, "cost": 18750, "color": 0x6d0b52, "icon": "https://simple-mmo.com/img/icons/two/32px/RuneStone17_32.png"},
+            "Mount Olympus": {"mult": 5.0, "cost": 21250, "color": 0x9c5048, "icon": "https://simple-mmo.com/img/icons/S_Earth07.png"},
+            "Rapture": {"mult": 5.5, "cost": 27000, "color": 0xac6d28, "icon": "https://simple-mmo.com/img/icons/one/icon174.png"},
+            "Nirvana": {"mult": 6.0, "cost": 34500, "color": 0xfafaee, "icon": "https://simple-mmo.com/img/icons/one/icon130.png"}
+        }
 
-        if rank in rank_data:
-            mult = rank_data[rank]["mult"]
-            cost = rank_data[rank]["cost"]
-            color = rank_data[rank]["color"]
-            icon = rank_data[rank]["icon"]
+        mult = RANK_DATA[rank]["mult"]
+        cost = RANK_DATA[rank]["cost"]
+        #color = RANK_DATA[rank]["color"]
+        icon = RANK_DATA[rank]["icon"]
 
         player = await helpers.get_user(ctx)
         if player is None:
@@ -168,36 +176,33 @@ class Utility(commands.Cog):
                 money_needed += cost
 
 
-        regen_time: str = helpers.formattime(npc_to_kill*5)
+        regen_time:str = helpers.formattime(npc_to_kill*5)
         split_time = findall(r'\d+[a-zA-Z]', regen_time)
-        m110 = 0
+        days = 0
         for i in split_time:
             if "w" in i:
-                m110 += 7 * int(i.split("w")[0])
+                days += 7 * int(i.split("w")[0])
             if "d" in i:
-                m110 += int(i.split("d")[0])
-        m150 = 180 * (m110 if npc_to_kill > 180 else 0)
-        m110 = 125 * (m110 if npc_to_kill > 125 else 0)
+                days += int(i.split("d")[0])
+        moes_p = MOE_PLEB * (days if npc_to_kill > MOE_PLEB else 0)
+        moes = MOE * (days if npc_to_kill > MOE else 0)
         
-        emb = helpers.Embed(title="Battle arena calculator",
-                            description=f"**Level**: {player.level:,} -> {target_level if npc is None else current_level:,}\n**Rank**: {rank}\n**Boost**: {boost_percentage}%\n",
-                            color=color,
-                            thumbnail=icon)
-        msg:str = (f"**NPC generated**: {npc_to_kill:,} :skull:\n"
-                    f"**Cost**: {money_needed:,} :coin: [{int(money_needed*1.035):,} :bank:]\n"
-                    f"**Natural regen time**: {regen_time} :alarm_clock:\n"
-                    f"**Regen time w/ 125** :mushroom:: {helpers.formattime((max(0,npc_to_kill-m110))*5)} (Moe cost: {(m110)*30000:,} :coin: | {m110:,} :mushroom:)\n"
-                    f"**Regen time w/ 180** :mushroom:: {helpers.formattime((max(0,npc_to_kill-m150))*5)} (Moe cost: {(m150)*30000:,} :coin: | {m150:,} :mushroom:)\n"
-                    )
-        msg2:str = ""
-        STR_TEMPLATE = ["With {ep} Ep, it's worth to refill {refill_ep} EP instead\n",
+        msg:str = (
+            f"**NPC generated**: {npc_to_kill:,} :skull:\n"
+            f"**Cost**: {money_needed:,} :coin: [{int(money_needed*1.035):,} :bank:]\n"
+            f"**Natural regen time**: {regen_time} :alarm_clock:\n"
+            f"**Regen time w/ {MOE}** :mushroom:: {helpers.formattime((max(0,npc_to_kill-moes))*5)} (Moe cost: {(moes)*30000:,} :coin: | {moes:,} :mushroom:)\n"
+            f"**Regen time w/ {MOE_PLEB}** :mushroom:: {helpers.formattime((max(0,npc_to_kill-moes_p))*5)} (Moe cost: {(moes_p)*30000:,} :coin: | {moes_p:,} :mushroom:)\n"
+        )
+        STR_TEMPLATE = ("With {ep} Ep, it's worth to refill {refill_ep} EP instead\n",
                         "With {ep} Ep, if There is a sale it's worth to refill {refill_ep} EP instead\n",
-                        "With {ep} Ep, if There is a double sale it's worth to refill {refill_ep} EP instead\n"]
+                        "With {ep} Ep, if There is a double sale it's worth to refill {refill_ep} EP instead\n")
+        msg2:str = ""
         if energy_point is not None:
             diamon_needed = [0, 0, 0]
             refills = ceil(npc_to_kill / energy_point)
             
-            thresholds = [
+            thresholds = (
                 # max energy, cost (no sale, sale and double), min energy to be worth a refill, prev max energy
                 (10, [5, 4, 3],None,None),
                 (25, [8, 7, 6],[16,18,20],10),
@@ -208,17 +213,16 @@ class Utility(commands.Cog):
                 (750, [24, 22, 21],[667,734,750],500),
                 (1000, [29, 26, 24],[907,887,858],750),
                 (float('inf'), [35, 31, 29],[1207,1193,1209],1000)
-            ]
-            for threshold, diamon_values, diamon_value,refill_ep in thresholds:
+            )
+            for threshold, dias_cost, min_ep,refill_ep in thresholds:
                 if energy_point <= threshold:
-                    diamon_needed = [refills * value for value in diamon_values]
-                    if diamon_values:
-                        if energy_point < diamon_value[0]:
-                            msg2 += STR_TEMPLATE[0].format(ep=energy_point, refill_ep=refill_ep)
-                        if energy_point < diamon_value[1]:
-                            msg2 += STR_TEMPLATE[1].format(ep=energy_point, refill_ep=refill_ep)
-                        if energy_point < diamon_value[2]:
-                            msg2 += STR_TEMPLATE[2].format(ep=energy_point, refill_ep=refill_ep)
+                    diamon_needed = [refills * value for value in dias_cost]
+                    if energy_point < min_ep[0]:
+                        msg2 += STR_TEMPLATE[0].format(ep=energy_point, refill_ep=refill_ep)
+                    if energy_point < min_ep[1]:
+                        msg2 += STR_TEMPLATE[1].format(ep=energy_point, refill_ep=refill_ep)
+                    if energy_point < min_ep[2]:
+                        msg2 += STR_TEMPLATE[2].format(ep=energy_point, refill_ep=refill_ep)
                     break
             if len(msg2) != 0:
                 msg2 = f"**Tips**:\n{msg2}"
@@ -226,6 +230,11 @@ class Utility(commands.Cog):
             msg += f"**Refills Cost** (No sales): {diamon_needed[0]:,} :gem:\n"
             msg += f"**Refills Cost** (Sale): {diamon_needed[1]:,} :gem:\n"
             msg += f"**Refills Cost** (Double sale): {diamon_needed[2]:,} :gem:\n"
+
+        emb = helpers.Embed(title="Battle arena calculator",
+                            description=f"**Level**: {player.level:,} -> {target_level if npc is None else current_level:,}\n**Rank**: {rank}\n**Boost**: {boost_percentage}%\n",
+                            #color=color,
+                            thumbnail=icon)
         emb.add_field(name="",
                       value=msg+msg2)
         await helpers.send(ctx,embed=emb)
