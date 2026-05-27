@@ -76,3 +76,13 @@ class Season:
     name: str
     starts_at: str
     ends_at: str
+
+
+@dataclass
+class CompleteLb:
+    channel_id: int
+    message_id: int
+    guild_id: int
+    timestamp: int
+    category:str
+    timeframe: str
