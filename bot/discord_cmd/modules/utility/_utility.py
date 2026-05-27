@@ -10,7 +10,7 @@ from bot.discord_cmd.helpers.logger import logger
 from datetime import timedelta,datetime
 
 from time import strftime, gmtime
-from math import ceil
+from math import ceil, isqrt
 from re import findall
 
 class Utility(commands.Cog):
@@ -116,65 +116,124 @@ class Utility(commands.Cog):
     @command_utils.auto_defer(False)
     @command_utils.statistics("/bacalc")
     @command_utils.took_too_long()
-    async def bacalc(self, ctx:ApplicationContext, rank:str, target_level:int = None, boost_percentage:int = 0, starting_level:int=None, energy_point:int=None,npc:int=None) -> None:
+    async def bacalc(self, ctx:ApplicationContext, rank:str, target_level:int = None, boost_percentage:int = 0, starting_level:int=None, energy_point:int=None,npc:int=0) -> None:
         if target_level is None and npc is None:
             return await helpers.send(ctx,content="Insert a target level (target_level) or the amount of npc to kill (npc)")
         MOE:int = 125
         MOE_PLEB:int = 180
         RANK_DATA = {
-            "Copper": {"mult": 2.0, "cost": 1000, "color": 0xf8922f, "icon": "https://simple-mmo.com/img/icons/battlearena/1.png"},
-            "Bronze": {"mult": 2.2, "cost": 2500, "color": 0xe39f62, "icon": "https://simple-mmo.com/img/icons/battlearena/2.png"},
-            "Silver": {"mult": 2.4, "cost": 6000, "color": 0x9fa6b4, "icon": "https://simple-mmo.com/img/icons/battlearena/3.png"},
-            "Gold": {"mult": 2.6, "cost": 9375, "color": 0xe6c53a, "icon": "https://simple-mmo.com/img/icons/battlearena/4.png"},
-            "Platinum": {"mult": 3.0, "cost": 11250, "color": 0xa8aade, "icon": "https://simple-mmo.com/img/icons/battlearena/5.png"},
-            "Titanium": {"mult": 3.5, "cost": 13750, "color": 0xdf7676, "icon": "https://simple-mmo.com/img/icons/battlearena/6.png"},
-            "7th Circle": {"mult": 4.0, "cost": 16250, "color": 0xec1b04, "icon": "https://simple-mmo.com/img/icons/S_Fire08.png"},
-            "Ragnarok": {"mult": 4.5, "cost": 18750, "color": 0x6d0b52, "icon": "https://simple-mmo.com/img/icons/two/32px/RuneStone17_32.png"},
-            "Mount Olympus": {"mult": 5.0, "cost": 21250, "color": 0x9c5048, "icon": "https://simple-mmo.com/img/icons/S_Earth07.png"},
-            "Rapture": {"mult": 5.5, "cost": 27000, "color": 0xac6d28, "icon": "https://simple-mmo.com/img/icons/one/icon174.png"},
-            "Nirvana": {"mult": 6.0, "cost": 34500, "color": 0xfafaee, "icon": "https://simple-mmo.com/img/icons/one/icon130.png"}
+            "Copper": {"mult": 2.0, "cost": 1000, "icon": "https://simple-mmo.com/img/icons/battlearena/1.png"},
+            "Bronze": {"mult": 2.2, "cost": 2500, "icon": "https://simple-mmo.com/img/icons/battlearena/2.png"},
+            "Silver": {"mult": 2.4, "cost": 6000, "icon": "https://simple-mmo.com/img/icons/battlearena/3.png"},
+            "Gold": {"mult": 2.6, "cost": 9375, "icon": "https://simple-mmo.com/img/icons/battlearena/4.png"},
+            "Platinum": {"mult": 3.0, "cost": 11250, "icon": "https://simple-mmo.com/img/icons/battlearena/5.png"},
+            "Titanium": {"mult": 3.5, "cost": 13750, "icon": "https://simple-mmo.com/img/icons/battlearena/6.png"},
+            "7th Circle": {"mult": 4.0, "cost": 16250, "icon": "https://simple-mmo.com/img/icons/S_Fire08.png"},
+            "Ragnarok": {"mult": 4.5, "cost": 18750, "icon": "https://simple-mmo.com/img/icons/two/32px/RuneStone17_32.png"},
+            "Mount Olympus": {"mult": 5.0, "cost": 21250, "icon": "https://simple-mmo.com/img/icons/S_Earth07.png"},
+            "Rapture": {"mult": 5.5, "cost": 27000, "icon": "https://simple-mmo.com/img/icons/one/icon174.png"},
+            "Nirvana": {"mult": 6.0, "cost": 34500, "icon": "https://simple-mmo.com/img/icons/one/icon130.png"}
         }
-
-        mult = RANK_DATA[rank]["mult"]
-        cost = RANK_DATA[rank]["cost"]
-        #color = RANK_DATA[rank]["color"]
-        icon = RANK_DATA[rank]["icon"]
-
+        TIER_MULT = RANK_DATA[rank]["mult"]
+        BASE_XP_MULT = 3.25
+        NPC_COST = RANK_DATA[rank]["cost"]
+        THUMBNAIL = RANK_DATA[rank]["icon"]
         player = await helpers.get_user(ctx)
         if player is None:
             return
             
-        player.level = player.level if starting_level is None else starting_level
+        if starting_level is not None:
+            player.level = starting_level
+            player.exp = (50 * (player.level-1 * (player.level))//2)
 
-        if npc is None and player.level >= target_level:
+        xp_to_level_up  =  ((50 * (player.level * (player.level+1))//2)) - player.exp
+
+        if target_level and player.level >= target_level:
             return await helpers.send(ctx,"The level that you want reach has to be higher than your actual level. -_-")
-            
-        xp = player.exp if starting_level is None else 0
-
-        xp_needed  = xp - ((50 * (player.level * (player.level+1))//2) if starting_level is None else 0)
 
         money_needed:int = 0
         npc_to_kill:int = 0
-        current_level = player.level
-        xp_multiplier = 3.25 * mult * (1.0 + boost_percentage / 100)
+        final_level = player.level
+        final_xp_mult = BASE_XP_MULT * TIER_MULT * (1 + (boost_percentage / 100))
 
-        if npc is not None:
-            npc_to_kill = npc
-            for _ in range(1, npc + 1):
-                xp_needed += xp_multiplier * current_level
-                if xp_needed >= 0:
-                    xp_needed -= current_level * 50
-                    current_level += 1
-                money_needed += cost
-        else:
-            while current_level < target_level:
-                xp_needed += xp_multiplier * current_level
-                if xp_needed >= 0:
-                    xp_needed -= current_level * 50
-                    current_level += 1
-                npc_to_kill += 1
-                money_needed += cost
+        ##
+        if True:
+            final_xp_mult = int(BASE_XP_MULT * TIER_MULT * (1 + (boost_percentage / 100.0)))
+        
+            level = player.level
+            xp_to_next = int(((50 * level * (level + 1)) // 2) - player.exp)
+            
+            money_needed = 0
+            kills = 0
+            temp_xp = 0
+            
+            while (npc > 0 and kills < npc) or (npc == 0 and level < target_level):
+                max_kills_allowed = npc - kills if npc > 0 else float('inf')
+                
+                # Guard against Level 0 zeroing out all progression
+                gain_per_kill = final_xp_mult * max(1, level) 
+                
+                if gain_per_kill <= 0:
+                    break
+                    
+                needed_xp = xp_to_next - temp_xp
+                
+                if needed_xp > 0:
+                    # Integer ceiling division: (a + b - 1) // b
+                    # Prevents IEEE-754 float underflow to 0.0 on massive divisors
+                    kills_req = (needed_xp + gain_per_kill - 1) // gain_per_kill
+                    kills_to_process = int(min(max_kills_allowed, kills_req))
+                else:
+                    kills_to_process = int(min(max_kills_allowed, 1))
+                    
+                if kills_to_process <= 0:
+                    break
+                    
+                temp_xp += kills_to_process * gain_per_kill
+                money_needed += kills_to_process * NPC_COST
+                kills += kills_to_process
 
+                if temp_xp >= xp_to_next:
+                    temp_xp -= xp_to_next
+                    level += 1
+                    
+                    if temp_xp >= 50 * level:
+                        b = 25 * (2 * level - 1)
+                        discriminant = b**2 + 100 * temp_xp
+                        k = (-b + isqrt(discriminant)) // 50
+                        
+                        if k > 0:
+                            consumed_xp = 25 * k * (2 * level + k - 1)
+                            temp_xp -= consumed_xp
+                            level += k
+                            
+                    xp_to_next = level * 50
+
+            npc_to_kill = kills
+            final_level = level
+        ##
+        if False:
+            temp = 0
+            while (npc > 0 and npc_to_kill < npc) or (npc == 0 and final_level < target_level):
+                max_kills_allowed = npc - npc_to_kill if npc > 0 else 10_000_000
+                xp_x_kill = final_xp_mult * final_level
+                needed_xp = xp_to_level_up - temp
+                if needed_xp > 0:
+                    kills_req = (needed_xp + xp_x_kill - 1) // xp_x_kill
+                    kills_to_process = int(min(max_kills_allowed, kills_req))
+                else:
+                    kills_to_process = int(min(max_kills_allowed, 1))
+                if kills_to_process <= 0:
+                    break
+                temp += xp_x_kill * kills_to_process
+                money_needed += NPC_COST * kills_to_process
+                npc_to_kill += kills_to_process
+                while temp >= xp_to_level_up:
+                    temp -= xp_to_level_up
+                    final_level += 1
+                    xp_to_level_up += 50
+        
+        lvl_gained = final_level - player.level
 
         regen_time:str = helpers.formattime(npc_to_kill*5)
         split_time = findall(r'\d+[a-zA-Z]', regen_time)
@@ -190,15 +249,15 @@ class Utility(commands.Cog):
         msg:str = (
             f"**NPC generated**: {npc_to_kill:,} :skull:\n"
             f"**Cost**: {money_needed:,} :coin: [{int(money_needed*1.035):,} :bank:]\n"
-            f"**Natural regen time**: {regen_time} :alarm_clock:\n"
+            f"\n**Natural regen time**: {regen_time} :alarm_clock:\n"
             f"**Regen time w/ {MOE}** :mushroom:: {helpers.formattime((max(0,npc_to_kill-moes))*5)} (Moe cost: {(moes)*30000:,} :coin: | {moes:,} :mushroom:)\n"
             f"**Regen time w/ {MOE_PLEB}** :mushroom:: {helpers.formattime((max(0,npc_to_kill-moes_p))*5)} (Moe cost: {(moes_p)*30000:,} :coin: | {moes_p:,} :mushroom:)\n"
         )
-        STR_TEMPLATE = ("With {ep} Ep, it's worth to refill {refill_ep} EP instead\n",
-                        "With {ep} Ep, if There is a sale it's worth to refill {refill_ep} EP instead\n",
-                        "With {ep} Ep, if There is a double sale it's worth to refill {refill_ep} EP instead\n")
         msg2:str = ""
         if energy_point is not None:
+            STR_TEMPLATE = ("With {ep} Ep, it's worth to refill {refill_ep} EP instead\n",
+                            "With {ep} Ep, if There is a sale it's worth to refill {refill_ep} EP instead\n",
+                            "With {ep} Ep, if There is a double sale it's worth to refill {refill_ep} EP instead\n")
             diamon_needed = [0, 0, 0]
             refills = ceil(npc_to_kill / energy_point)
             
@@ -225,16 +284,15 @@ class Utility(commands.Cog):
                         msg2 += STR_TEMPLATE[2].format(ep=energy_point, refill_ep=refill_ep)
                     break
             if len(msg2) != 0:
-                msg2 = f"**Tips**:\n{msg2}"
-            msg += f"**Refills ({energy_point:,} ep)** :repeat:: {refills:,} refills\n"
+                msg2 = f"\n**Tips**:\n{msg2}"
+            msg += f"\n**Refills ({energy_point:,} ep)** :repeat:: {refills:,} refills\n"
             msg += f"**Refills Cost** (No sales): {diamon_needed[0]:,} :gem:\n"
             msg += f"**Refills Cost** (Sale): {diamon_needed[1]:,} :gem:\n"
             msg += f"**Refills Cost** (Double sale): {diamon_needed[2]:,} :gem:\n"
 
         emb = helpers.Embed(title="Battle arena calculator",
-                            description=f"**Level**: {player.level:,} -> {target_level if npc is None else current_level:,}\n**Rank**: {rank}\n**Boost**: {boost_percentage}%\n",
-                            #color=color,
-                            thumbnail=icon)
+                            description=f"**Level**: {player.level:,} -> {final_level:,} (+{lvl_gained:,})\n**Rank**: {rank}\n**Boost**: {boost_percentage}%\n",
+                            thumbnail=THUMBNAIL)
         emb.add_field(name="",
                       value=msg+msg2)
         await helpers.send(ctx,embed=emb)
@@ -267,14 +325,15 @@ class Utility(commands.Cog):
             title=f"Crafting from lvl {current_lvl} to {lvl_to_reach}",
             description=f"**XP needed to reach lvl {lvl_to_reach}**: {xp_needed:,}")
 
-        rarity = {"Common": (15,15),
-                       "Uncommon":(20,20),
-                       "Rare":(25,20),
-                       "Elite":(40,25),
-                       "Epic":(45,30),
-                       "Legendary":(55,25),
-                       "Celestial":(70,35)
-                       }
+        rarity = {
+            "Common": (15,15),
+            "Uncommon":(20,20),
+            "Rare":(25,20),
+            "Elite":(40,25),
+            "Epic":(45,30),
+            "Legendary":(55,25),
+            "Celestial":(70,35)
+        }
         
         for name,values in rarity.items():
             craft_needed:int = ceil(xp_needed/values[0])
