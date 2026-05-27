@@ -2,7 +2,6 @@ from discord import Bot,ApplicationContext,slash_command,guild_only,option,Membe
 from discord.ext.commands import Cog
 from pycord.multicog import subcommand
 from urllib.request import urlretrieve
-from PIL.Image import open
 from datetime import time, datetime, timezone, timedelta
 from random import choice
 from string import ascii_lowercase, ascii_uppercase, digits
@@ -19,10 +18,9 @@ from bot.discord_cmd.modules.user._equipment_view import EquipmentView
 from bot.discord_cmd.modules.user._unverify_button import UnverifyButton
 from bot.discord_cmd.modules.user._leaderboard_view import LeaderboardView
 from bot.discord_cmd.modules.user._tasks import UsersTask
-
-from PIL import Image
-from io import BytesIO
 from requests import get
+import os
+
 class Users(Cog):
     def __init__(self, client):
         self.client = client
@@ -30,36 +28,43 @@ class Users(Cog):
     @subcommand("user")
     @slash_command(description="Show the user avatar")
     @guild_only()
-    @option(name="size",choices=[1,2,3,4,5,10])
+    @option(name="scale",choices=[1,2,3,4,5,10])
     @permissions.require_linked_account()
     @command_utils.auto_defer(False)
     @command_utils.statistics("/user avatar")
     @command_utils.took_too_long()
-    async def avatar(self,ctx:ApplicationContext,user:Member=None,smmo_id:int=None,size:int=3):
+    async def avatar(self, ctx: ApplicationContext, user: Member = None, smmo_id: int = None, scale: int = 3):
         game_user = await helpers.get_user(ctx, smmo_id, user)
-
-        emb = helpers.Embed(title=f"{game_user.name}'s Avatar")
-        if size == 1:
-            emb.set_image(url=f"https://simple-mmo.com{game_user.avatar}")
-            return await helpers.send(ctx,embed=emb)
+        if game_user is None:
+            return
         
+        temp_in = f"./temp/raw_{ctx.author.id}.gif"
+        temp_out = f"./temp/res_{ctx.author.id}.gif"
+
         response = get(f"https://simple-mmo.com{game_user.avatar}")
         response.raise_for_status()
 
-        img = Image.open(BytesIO(response.content))
-        img.save("./temp/ava1.gif")
-        #urlretrieve(f"https://simple-mmo.com{game_user.avatar}","./temp/ava1.gif")
-        #img = open("./temp/ava1.gif")
-        helpers.resize_gif("./temp/ava1.gif","./temp/ava2.gif",(int(img.size[0]*size), int(img.size[1]*size)))
-        file = File("./temp/ava2.gif", filename="ava3.gif")
-        emb.set_image(url="attachment://ava3.gif")
-        return await helpers.send(ctx,file=file, embed=emb)
+        with open(temp_in, "wb") as f:
+            f.write(response.content)
+
+        helpers.resize_gif2(temp_in, temp_out, scale)
+
+        # Send
+        file = File(temp_out, filename="avatar.gif")
+        emb = helpers.Embed(title=f"{game_user.name}'s Avatar")
+        emb.set_image(url="attachment://avatar.gif")
+        
+        await helpers.send(ctx, file=file, embed=emb)
+
+        for f in [temp_in, temp_out]:
+            if os.path.exists(f):
+                os.remove(f)
     
     @subcommand("user")
     @slash_command(description="Show the best user stats registered by the bot")
     @guild_only()
-    @permissions.require_linked_account()
     @command_utils.auto_defer(False)
+    @permissions.require_linked_account()
     @command_utils.statistics("/user lb")
     @command_utils.took_too_long()
     async def lb(self,ctx:ApplicationContext):
@@ -257,8 +262,8 @@ class Users(Cog):
         emb.set_footer(text="Data limited to that saved in the Database.")
         await helpers.send(ctx,embed=emb)
 
-    @subcommand("user", independent=True)
-    @slash_command(description="Add a profile to track the stats WILL NOT be linked with your discord!")
+    #@subcommand("user", independent=True)
+    #@slash_command(description="Add a profile to track the stats WILL NOT be linked with your discord!")
     @guild_only()
     @command_utils.auto_defer(False)
     @command_utils.statistics("/user verify2")
@@ -427,7 +432,7 @@ class Users(Cog):
             f"Boss Killed: {profile.boss_kills:,}\n\n"
             f"PVP Kills: {profile.user_kills:,}\n"
             f"Bounties Completed: {profile.bounties_completed:,}\n\n"
-            f"Quest Completed: {profile.quests_complete:,}\n"
+            f"Quest Completed: {profile.quests_complete:,}/114\n"
             f"Quest performed: {profile.quests_performed:,}\n\n"
             f"Market Trades: {profile.market_trades:,}\n\n"
             f"Chest opened: {profile.chests_opened:,}\n"
@@ -491,16 +496,18 @@ class Users(Cog):
 
     @subcommand("user", independent=True)
     @slash_command(description="Get the daily/weekly/monthly stats")
+    @command_utils.auto_defer(False)
     @guild_only()
     @option(name="timeframe",choices=["Daily","Past 7 Days","In-Game Weekly","Yesterday","Monthly","In-Game Monthly"])
     @permissions.require_linked_account()
-    @command_utils.auto_defer(False)
     @command_utils.statistics("/user stats")
     @command_utils.took_too_long()
     async def stats(self,ctx:ApplicationContext,user:Member=None,smmo_id:int=None,timeframe:str="Daily"):
         date = helpers.get_date_game(timeframe)
         to_date = helpers.get_current_date_game()
         current_stats = await helpers.get_user(ctx, smmo_id, user)
+        if current_stats is None:
+            return
         avatar = current_stats.avatar
         name = current_stats.name
         id = current_stats.id
