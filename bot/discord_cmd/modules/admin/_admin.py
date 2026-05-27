@@ -1,4 +1,4 @@
-from discord import Bot, ApplicationContext, guild_only, slash_command, TextChannel, Role, option
+from discord import Bot,ApplicationContext,guild_only,slash_command,TextChannel,Role,option,Member
 from discord.errors import Forbidden
 from discord.ext.commands import Cog
 from pycord.multicog import subcommand
@@ -13,17 +13,46 @@ from bot.discord_cmd.modules.admin._auto_add_role_selection_view import WelcomeM
 from bot.database.model import Requirements
 from bot.discord_cmd.modules.admin._tasks import AdminTask
 
+
 class Admin(Cog):
     def __init__(self, client) -> None:
         self.client = client
+    
+    @subcommand("admin")
+    @slash_command(description="Verify a member of your guild")
+    @guild_only()
+    @command_utils.auto_defer()
+    @permissions.require_linked_server()
+    @permissions.require_admin_or_staff()
+    @command_utils.statistics("/admin verify")
+    @command_utils.took_too_long()
+    async def verify(self, ctx:ApplicationContext,user:Member,smmo_id:int) -> None:
+        discord_user = await Database.select_user_discord(user.id)
+        if discord_user and discord_user.smmo_id:
+            return await ctx.followup.send("User already linked")
+        discord_user = await Database.select_user_smmoid(smmo_id)
+        if discord_user:
+            return await ctx.followup.send("Smmo ID already linked with another user")
+        ing_user = await SMMOApi.get_player_info(smmo_id)
+        if ing_user is None:
+            return await ctx.followup.send("Smmo ID not Found")
+        if ing_user.guild.id != ctx.game_guild_id:
+            return await ctx.followup.send("You can verify only members of your guild")
+
+        await Database.insert_user(user.id,"ADMIN ALLOWED")
+        await Database.update_user(user.id,smmo_id)
+        return await ctx.followup.send("User Verified")
 
     @subcommand("admin")
     @slash_command(description="Set a welcome for player when they join the server")
     @guild_only()
     @permissions.require_linked_server()
+    @permissions.require_admin_or_staff()
     @command_utils.statistics("/admin set_join")
     @command_utils.took_too_long()
     async def set_join(self, ctx:ApplicationContext) -> None:
+        if not ctx.guild.me.guild_permissions.manage_roles:
+            return await ctx.followup.send(content="I don't have the perms to give roles")
         conf = await Database.select_join_roles(ctx.guild.id)
         if conf is not None:
             return await ctx.followup.send(content="Message already set, remove it before setting another (/admin rm_join)")
@@ -35,6 +64,7 @@ class Admin(Cog):
     @slash_command(description="Remove /admin set_join configuration")
     @guild_only()
     @permissions.require_linked_server()
+    @permissions.require_admin_or_staff()
     @command_utils.statistics("/admin rm_join")
     @command_utils.took_too_long()
     async def rm_join(self, ctx:ApplicationContext) -> None:
@@ -46,16 +76,18 @@ class Admin(Cog):
     @slash_command(description="Analize last 7 days of the guild and suggest best task to gain pp/gxp")
     @guild_only()
     @permissions.require_linked_server()
+    @permissions.require_admin_or_staff()
     @command_utils.auto_defer(False)
     @command_utils.statistics("/admin task_calc")
     @command_utils.took_too_long()
     async def task_calc(self, ctx:ApplicationContext) -> None:
-        members = await SMMOApi.get_guild_members(ctx.user_guild_id)
+        members = await SMMOApi.get_guild_members(ctx.game_guild_id)
         total_stats = [0, 0] # [steps, npc_k]
         date = datetime.now() - timedelta(days=7)
 
+        bulk_stats = await Database.select_user_stat_bulk([m.user_id for m in members],date.year,date.month,date.day)
         for m in members:
-            past_stats = await Database.select_user_stat(m.user_id,date.year,date.month,date.day)
+            past_stats = bulk_stats[m.user_id]
             if not past_stats:
                 logger.warning("Stats of 7 days ago for user %s(%s) not found. Skipping user...",m.name,m.user_id)
                 continue
@@ -198,7 +230,7 @@ class Admin(Cog):
     @command_utils.statistics("/admin role_add")
     @command_utils.took_too_long()
     async def role_add(self,ctx:ApplicationContext,role:Role) -> None:
-        if not await Database.insert_staff(ctx.user_guild_id, role.id):
+        if not await Database.insert_staff(ctx.game_guild_id, role.id):
             return await helpers.send(ctx,content="Role already added")
         await helpers.send(ctx,content="Role added.")
 
@@ -211,7 +243,7 @@ class Admin(Cog):
     @command_utils.statistics("/admin role_remove")
     @command_utils.took_too_long()
     async def role_remove(self,ctx:ApplicationContext,role:Role) -> None:
-        await Database.delete_staff(ctx.user_guild_id, role.id)
+        await Database.delete_staff(ctx.game_guild_id, role.id)
         await helpers.send(ctx,content="Role removed.")
 
     @subcommand("admin")
@@ -223,7 +255,7 @@ class Admin(Cog):
     @command_utils.statistics("/admin roles")
     @command_utils.took_too_long()
     async def roles(self,ctx:ApplicationContext) -> None:
-        roles = await Database.select_staff(ctx.user_guild_id)
+        roles = await Database.select_staff(ctx.game_guild_id)
         is_empty,roles=helpers.gen_is_empty(roles)
         error: bool = False
         if is_empty:
@@ -248,7 +280,10 @@ class Admin(Cog):
     @command_utils.statistics("/admin link server")
     @command_utils.took_too_long()
     async def server(self,ctx:ApplicationContext,guild_id:int) -> None:
-        player = ctx.user_game_profile if hasattr(ctx,"user_game_profile") else await SMMOApi.get_player_info(ctx.discord_user.smmo_id)
+        if hasattr(ctx,"user_game_profile") and ctx.user_game_profile:
+            player = ctx.user_game_profile 
+        else:
+            player = await SMMOApi.get_player_info(ctx.discord_user.smmo_id)
         guild_members = await SMMOApi.get_guild_members(guild_id)
         if player.guild is not None and player.guild.id == guild_id and any(x.position != "Member" for x in guild_members if player.id == x.user_id):
             if not await Database.insert_server(guild_id, ctx.guild_id):
@@ -271,7 +306,7 @@ class Admin(Cog):
     @command_utils.statistics("/admin set_members_req")
     @command_utils.took_too_long()
     async def set_members_req(self,ctx:ApplicationContext,days:int,levels:int=0,npc:int=0,pvp:int=0,steps:int=0):
-        if not await Database.insert_requirements(ctx.user_guild_id, days, levels, npc, pvp, steps):
+        if not await Database.insert_requirements(ctx.game_guild_id, days, levels, npc, pvp, steps):
             return await helpers.send(ctx,content="Requirements already added for this guild.\nRemove first before adding again")
         await helpers.send(ctx,content="Requirements saved.")
 
@@ -284,7 +319,7 @@ class Admin(Cog):
     @command_utils.statistics("/admin remove_member_req")
     @command_utils.took_too_long()
     async def remove_member_req(self,ctx:ApplicationContext):
-        await Database.delete_requirements(ctx.user_guild_id)
+        await Database.delete_requirements(ctx.game_guild_id)
         await helpers.send(ctx,content="Requirements removed.")
 
     @subcommand("admin guilds")
@@ -296,7 +331,7 @@ class Admin(Cog):
     @command_utils.statistics("/admin check_req")
     @command_utils.took_too_long()
     async def check_req(self,ctx:ApplicationContext,days:int=0,levels:int=0,npc:int=0,pvp:int=0,steps:int=0,ignore_staff:bool=True):
-        req = await Database.select_requirements(ctx.user_guild_id)
+        req = await Database.select_requirements(ctx.game_guild_id)
 
         if all(v == 0 for v in [days, levels, npc, pvp, steps]) and req is None:
             return await helpers.send(ctx,content="Set requirements or add manually the parameters in the command")
@@ -315,7 +350,7 @@ class Admin(Cog):
         if steps == 0 and req is not None:
             steps = req.steps
 
-        req = Requirements(ctx.user_guild_id, days, levels, npc, pvp, steps)
+        req = Requirements(ctx.game_guild_id, days, levels, npc, pvp, steps)
 
         is_empty,guild_members = helpers.gen_is_empty(await SMMOApi.get_guild_members(req.guild_id))
         safe_users = await Database.select_safe_user(req.guild_id)
@@ -329,6 +364,7 @@ class Admin(Cog):
         np: list = []
         pv: list = []
         st: list = []
+        bulk_stats = await Database.select_user_stat_bulk([m.user_id for m in guild_members], date.year, date.month, date.day)
         for member in guild_members:
             if any(member.user_id == v.smmo_id for v in safe_users):
                 continue
@@ -342,7 +378,7 @@ class Admin(Cog):
                         "id": member.user_id,
                     }
                 )
-            member_stats = await Database.select_user_stat(member.user_id, date.year, date.month, date.day)
+            member_stats = bulk_stats[member.user_id]
             if member_stats is None:
                 continue
 
@@ -401,7 +437,7 @@ class Admin(Cog):
     @command_utils.statistics("/admin req_safe_list")
     @command_utils.took_too_long()
     async def req_safe_list(self,ctx:ApplicationContext):
-        safe_users = await Database.select_safe_user(ctx.user_guild_id)
+        safe_users = await Database.select_safe_user(ctx.game_guild_id)
         emb = helpers.Embed(title="Safe Users List:")
         no_user: bool = True
         msg:str = ""
@@ -425,7 +461,7 @@ class Admin(Cog):
         player = helpers.get_user(smmo_id=smmo_id)
         if player is None:
             return await helpers.send(ctx,content="Player not found.")
-        if not await Database.insert_safe_user(smmo_id, ctx.user_guild_id):
+        if not await Database.insert_safe_user(smmo_id, ctx.game_guild_id):
             return await helpers.send(ctx,content="Player already in the safe list")
         await helpers.send(ctx,content=f"Player '{player.name}' added to safe list.")
 
@@ -438,7 +474,7 @@ class Admin(Cog):
     @command_utils.statistics("/admin req_remove_safe_list")
     @command_utils.took_too_long()
     async def req_remove_safe_list(self,ctx:ApplicationContext,smmo_id:int):    
-        await Database.delete_safe_user(smmo_id, ctx.user_guild_id)
+        await Database.delete_safe_user(smmo_id, ctx.game_guild_id)
         return await helpers.send(ctx,content="Player removed.")
     
     @subcommand("admin guilds")
@@ -492,7 +528,9 @@ class Admin(Cog):
             return await helpers.send(ctx,content="Bot doesn't have the perms to see/write the channel.")
         message = await channel.send(content="The member lb will be setted here.")
         if not await Database.insert_lb(channel.id, message.id, await Database.select_server(ctx.guild_id),helpers.get_current_date_game().strftime("%d/%m/%Y")):
-            return await helpers.send(ctx,content="Already set")
+            await helpers.send(ctx,content="Already set")
+            await message.delete()
+            return
         await helpers.send(ctx,content="Done")
 
     @subcommand("admin guilds")
@@ -506,6 +544,47 @@ class Admin(Cog):
         if channel is None:
             channel = ctx.channel
         await Database.delete_lb(channel.id)
+        await helpers.send(ctx,content="Done")
+
+    @subcommand("admin guilds")
+    @slash_command(description="Set a message that show a leaderboard")
+    @guild_only()
+    @option(name="category",choices=["LEVELS","NPC","PVP","STEPS"])
+    @option(name="timeframe",choices=["Daily","In-Game Weekly","In-Game Monthly"])
+    @command_utils.auto_defer()
+    @permissions.require_linked_server()
+    @permissions.require_admin_or_staff()
+    @command_utils.statistics("/admin set_lb")
+    @command_utils.took_too_long()
+    async def set_lb(self,ctx:ApplicationContext,category:str,timeframe:str,channel:TextChannel=None):
+        if channel is None:
+            channel = ctx.channel
+        try:
+            ch = await self.client.fetch_channel(channel.id)
+            await ch.send(content="test message.", delete_after=1)
+        except Forbidden:
+            return await helpers.send(ctx,content="Bot doesn't have the perms to see/write the channel.")
+        
+        timestamp = int(helpers.get_date_game(timeframe).timestamp())
+
+        message = await channel.send(content="The member lb will be setted here.")
+        if not await Database.insert_cmp_lb(channel.id,message.id,await Database.select_server(ctx.guild_id),timestamp,category,timeframe):
+            await helpers.send(ctx,content="Already set")
+            await message.delete()
+            return
+        await helpers.send(ctx,content="Done")
+
+    @subcommand("admin guilds")
+    @slash_command(description="Remove the full member leaderboard")
+    @guild_only()
+    @command_utils.auto_defer()
+    @permissions.require_admin_or_staff()
+    @command_utils.statistics("/admin remove_lb")
+    @command_utils.took_too_long()
+    async def remove_lb(self,ctx:ApplicationContext,channel:TextChannel=None):
+        if channel is None:
+            channel = ctx.channel
+        await Database.delete_cmp_lb(channel.id)
         await helpers.send(ctx,content="Done")
 
 def setup(client: Bot):

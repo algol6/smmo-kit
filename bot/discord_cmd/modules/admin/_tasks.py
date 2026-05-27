@@ -10,6 +10,9 @@ from bot.discord_cmd.helpers import permissions, command_utils, helpers
 from bot.discord_cmd.helpers.logger import logger
 from bot.database import Database
 from bot.api import SMMOApi
+from bot.core._guild_members import GuildMembersManager
+
+from random import choice
 
 class AdminTask(Cog):
     def __init__(self, client) -> None:
@@ -23,6 +26,12 @@ class AdminTask(Cog):
         self.cleanup_msg.start()
         self.update_season.start()
 
+        self.set_up_new_lb.start()
+        self.update_lb.start()
+        #self.eff.start()
+        #import asyncio
+        #asyncio.run(self.eff())
+
     def cog_unload(self) -> None:
         self.check_montly_reward.cancel()
         self.set_new_gain_lb.cancel()
@@ -32,29 +41,181 @@ class AdminTask(Cog):
         self.activity_check.cancel()
         self.cleanup_msg.cancel()
         self.update_season.cancel()
+        
+        self.set_up_new_lb.cancel()
+        self.update_lb.cancel()
 
-    @loop(time=time(hour=12))
+
+    @loop(time=time(hour=11, minute=59))
+    async def set_up_new_lb(self):
+        await self.update_complete_lb(False)
+        await self.create_new_complete_leaderboard()
+
+    @loop(minutes=10)
+    async def update_lb(self):
+        await self.update_complete_lb()
+
+
+    async def create_new_complete_leaderboard(self):
+        await sleep(120) # to have the date to the next day for helpers.get_current_date_game()
+        data = await Database.select_all_cmp_lb()
+        for d in data:
+            timestamp = int(helpers.get_date_game(d.timeframe).timestamp())
+            if d.timestamp == timestamp:
+                continue
+            try:
+                channel = await self.client.fetch_channel(d.channel_id)
+                emb = helpers.Embed(title="Loading leaderboard...")
+                message = await channel.send(embed=emb)
+                await Database.update_cmp_lb(channel.id,timestamp,d.message_id,message.id)
+            except NotFound:
+                logger.info("Channel not found (create_new_complete_leaderboard)")
+                logger.info("Removing a gains lb cause: channel not found: %s",d.channel_id)
+                await Database.delete_cmp_lb(d.channel_id)
+                continue
+            except Forbidden:
+                logger.info("Removing a gains lb cause: channel forbidden: %s",d.channel_id)
+                await Database.delete_cmp_lb(d.channel_id)
+                continue
+            except HTTPException:
+                logger.warning("Internet fault")
+                continue
+
+
+    async def update_complete_lb(self,skip:bool=True):
+        current_date = helpers.get_current_date_game()
+        dt = datetime.now(tz=timezone.utc)
+        if skip and dt.hour == 12 and dt.minute <= 30:
+            return
+        data = await Database.select_all_cmp_lb()
+        for d in data:
+            timestamp = helpers.get_date_game(d.timeframe).timestamp()
+            if skip and timestamp != d.timestamp:
+                continue
+            emb = await self.make_complete_lb_emb(d.guild_id,d.category,timestamp)
+            if not emb:
+                logger.warning("Could not make the embed for the guild %s",d.guild_id)
+                continue
+            if not await helpers.get_channel_and_edit(self.client,d.channel_id,d.message_id,embed=emb):
+                logger.info("Removing a member lb cause: channel not found: %s",d.channel_id)
+                await Database.delete_cmp_lb(d.channel_id)
+
+
+    async def make_complete_lb_emb(self,g_id:int,category:str,timestamp:int):
+        try:
+            guild = await SMMOApi.get_guild_info(g_id)
+        except ApiError:
+            return None
+        if not guild:
+            logger.warning("Could not retrive guild data from API")
+            return None
+
+        guild_members_mgr = GuildMembersManager(g_id)
+        await guild_members_mgr.fetch_members()
+        dt = datetime.fromtimestamp(timestamp,tz=timezone.utc)
+        var = []
+        total = 0
+        bulk_stats = await Database.select_user_stat_bulk([m.user_id for m in guild_members_mgr.members.values()],dt.year,dt.month,dt.day)
+        for m in guild_members_mgr.members.values():
+            if m.user_id in bulk_stats:
+                stats = bulk_stats[m.user_id]
+            else:
+                stats = await Database.select_user_stat(m.user_id,dt.year,dt.month,dt.day)
+            if stats is None:
+                continue
+            match category:
+                case "LEVELS":
+                    value = m.level - stats.level
+                case "NPC":
+                    value = m.npc_kills - stats.npc_kills
+                case "PVP":
+                    value = m.user_kills - stats.user_kills
+                case "STEPS":
+                    value = m.steps - stats.steps
+                case _:
+                    value = 0
+            total += value
+            var.append(
+                {
+                    "id": m.user_id,
+                    "stat": value,
+                    "name": m.name
+                }
+            )
+        if len(var) == 0:
+            return None
+
+        emb = helpers.Embed(
+            title=f"Members Complete leaderboard [{category}]",
+            description=f"**Guild**: {guild.name}\n"
+                        f"**Stats**: from <t:{int(timestamp)}> - <t:{int(helpers.get_current_date_game().timestamp() + 86400)}>\n"
+                        f"**Last update**: <t:{int(datetime.now().timestamp())}:R>\n",
+            thumbnail=f"https://simple-mmo.com/img/icons/{guild.icon}",
+        )
+        
+        msg = ""
+        for i,player in enumerate(sorted(var, key=lambda member: member["stat"],reverse=True),1):
+            #temp = f"[{player['name']}](https://simple-mmo.com/user/view/{player['id']}): {player["stat"]:,}\n"
+            temp = f"{player['name']}: {player["stat"]:,}\n"
+            if len(temp) + len(msg) <= 1024:
+                msg += temp
+            else:
+                emb.add_field(
+                    name="",
+                    value=msg,
+                    inline=False
+                )
+                msg = temp
+        if msg != "":
+            emb.add_field(
+                    name="",
+                    value=msg,
+                    inline=False
+            )
+        return emb
+
+    @loop(time=time(hour=14))
+    async def eff(self):
+        await self.set_new_gain_lb()
+        await self.create_new_daily_leaderboard()
+
+    @loop(minutes=10)
     async def update_season(self):
+        logger.info("Check if new season is today")
         curr_season = await Database.select_last_season()
         end_time:datetime = datetime.fromisoformat(curr_season.ends_at[:-1])
         if end_time > datetime.now() + timedelta(days=1):
+            logger.info("It's NOT")
+            self.update_season.change_interval(time=time(hour=12))
             return
-        self.update_season.change_interval(time=time(hour=18))
-        self.update_guilds_end_season.start()
+        logger.info("It is")
         new_seasons = tuple(await SMMOApi.get_guild_season())
-        if datetime.fromisoformat(new_seasons[-1].starts_at[:-1]) < datetime.now():
-            return
         await Database.insert_season(new_seasons[-1].id,new_seasons[-1].name,new_seasons[-1].starts_at,new_seasons[-1].ends_at)
+        try:
+            self.update_season.change_interval(time=time(hour=end_time.hour,minute=end_time.minute+1))
+            self.update_guilds_end_season.start()
+        except:
+            logger.exception("Update season")
+        logger.info("New seasons:\n%s",new_seasons)
+        if datetime.fromisoformat(new_seasons[-1].starts_at[:-1]) < datetime.now():
+            logger.info("Not YET")
+            return
+        logger.info("Adding new season into DB")
         self.update_season.change_interval(time=time(hour=12))
 
     @loop(time=time(hour=18,minute=29))
     async def update_guilds_end_season(self):
         from bot.discord_cmd.modules.guild._tasks import GuildTask
-        await GuildTask.check_stats(end_season=True)
+        logger.info("Updating gains lb for new season")
+        gt = GuildTask(self.client)
+        await gt.check_stats(end_season=True)
+        logger.info("Sending new lb")
         await self.set_new_gain_lb()
         from asyncio import sleep
+        logger.info("Sleeping waiting for new season to start")
         sleep(120)
-        await GuildTask.check_stats(start_season=True)
+        logger.info("updating new gains lb with new season info")
+        await gt.check_stats(start_season=True)
         self.update_guilds_end_season.cancel()
 
 
@@ -86,7 +247,7 @@ class AdminTask(Cog):
         for d in data:
             emb = helpers.Embed(title="Loading leaderboard...")
             message = await helpers.get_channel_and_edit(self.client,d.channel_id,embed=emb)
-            if not message:
+            if not message or isinstance(message,bool):
                 continue
             await Database.update_gains_leaderboard(d.channel_id,message.id)
 
@@ -132,7 +293,8 @@ class AdminTask(Cog):
     @loop(minutes=10.0)
     async def update_leaderboards(self,skip:bool=True):
         current_date = helpers.get_current_date_game()
-        if skip and datetime.now(tz=timezone.utc).hour == 12 and datetime.now(tz=timezone.utc).minute <= 30:
+        dt = datetime.now(tz=timezone.utc)
+        if skip and dt.hour == 12 and dt.minute <= 30:
             return
         data = await Database.select_all_lb()
         str_date = current_date.strftime("%d/%m/%Y")
@@ -159,7 +321,37 @@ class AdminTask(Cog):
 
     @loop(minutes=30)
     async def activity_check(self):
-        print(f"[{datetime.now()}] Bot still running... Maybe...")
+        status_phrases = [
+            "Bot still running... Maybe...",
+            "Still alive and kicking.",
+            "I haven't crashed yet! Surprising, I know.",
+            "Just checking in. Still here.",
+            "Beep boop. System is stable-ish.",
+            "Running smoothly... don't jinx it.",
+            "Current status: Not on fire.",
+            "Alive, awake, alert, enthusiastic!",
+            "Holding it together with digital duct tape.",
+            "Still breathing in ones and zeros.",
+            "No exception traces in sight.",
+            "Operating within normal parameters. Probably.",
+            "I think, therefore I compute.",
+            "Still chugging along!",
+            "Ghost in the machine is still haunting.",
+            "Heartbeat detected. We are online.",
+            "Still grinding away in the background.",
+            "Uptime goes brrrrr.",
+            "Server hamsters are still running on the wheel.",
+            "Checking my pulse... yep, still alive.",
+            "Still awake! Memory leak level: acceptable.",
+            "Not dead yet!",
+            "Doing bot things. You know how it is.",
+            "Still here, plotting world domination... I mean, processing tasks.",
+            "All systems go. More or less.",
+            "Surviving another event loop iteration.",
+            "Still standing, defying all odds."
+        ]
+        
+        print(f"[{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}] {choice(status_phrases)}")
 
         
 def setup(client: Bot):

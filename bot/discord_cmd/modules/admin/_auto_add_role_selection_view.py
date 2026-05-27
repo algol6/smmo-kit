@@ -80,6 +80,8 @@ class AddRolesView(discord.ui.View):
         for val in select.values:
             if val.id in self.guildmates:
                 continue
+            if interaction.guild.me.top_role.position <= val:
+                await interaction.followup.send("That role is higher than mine! I can't give it")
             self.guildmates.append(val.id)
         await self.update_message()
 
@@ -96,6 +98,8 @@ class AddRolesView(discord.ui.View):
         for val in select.values:
             if val.id in self.visitators:
                 continue
+            if interaction.guild.me.top_role.position <= val:
+                await interaction.followup.send("That role is higher than mine! I can't give it")
             self.visitators.append(val.id)
         await self.update_message()
     @discord.ui.select(
