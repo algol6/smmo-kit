@@ -52,4 +52,8 @@ class GuildMemberContribution:
     pve_exp: int
     pvp_kills: int
     pvp_exp: int
+    steps_taken: int
+    steps_experience: int
+    nodes_gathered: int
+    nodes_experience: int
     tax_contribution: TaxContribution

@@ -46,7 +46,6 @@ class SMMOApi:
                         SMMOApi.rate_limit_remaining = int(resp.headers.get("X-RateLimit-Remaining"))
                         if SMMOApi._first_request_time == 0.0:
                             SMMOApi._first_request_time = time()
-
                     return SMMOApi._fix_fucking_names(await resp.json())
 
     @staticmethod
