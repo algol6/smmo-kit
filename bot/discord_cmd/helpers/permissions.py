@@ -90,7 +90,6 @@ def require_linked_account():
                         ephemeral=True
                     )
                     return
-                
                 ctx.discord_user = discord_user
             return await func(*args, **kwargs)
         return wrapped
@@ -115,7 +114,7 @@ def require_linked_server():
                         ephemeral=True
                     )
                     return
-                ctx.user_guild_id = guild_id
+                ctx.game_guild_id = guild_id
             return await func(*args, **kwargs)
         return wrapped
     return wrapper

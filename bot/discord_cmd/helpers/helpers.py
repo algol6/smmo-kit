@@ -1,28 +1,38 @@
-from discord import Bot,ApplicationContext,Forbidden,TextChannel,HTTPException,InvalidData, NotFound, Forbidden, Embed, Member, Color,AutocompleteContext,MISSING
+from discord import Bot,ApplicationContext,Forbidden,InteractionContextType,IntegrationType,TextChannel,HTTPException,InvalidData, NotFound, Forbidden, Embed, Member, Color,AutocompleteContext,MISSING
 from discord.abc import GuildChannel
+from discord.commands import SlashCommand, SlashCommandGroup
 from datetime import datetime, timezone, timedelta
 
+from bot.discord_cmd.modules.trial._tasks import TrialTask
 from bot.discord_cmd.helpers.logger import logger
 from bot.api.model._player_info import PlayerInfo
-from bot.api import SMMOApi
-from bot.database import Database
+from bot.api import SMMOApi, ApiError
+from bot.database import Database, TrialDatabase
 from bot.database.model import GuildStats
+from bot.core._guild_members import GuildMembersManager
 
-import requests
 from io import BytesIO
 from colorthief import ColorThief
-from PIL import Image
+from PIL import Image, ImageSequence
 from itertools import chain
 from urllib.parse import urlparse
 
-
+import re
+import os
 import ast
 import operator
+import requests
 
+
+def make_title(string:str)->str:
+    return string.replace("_"," ").replace("-"," ").title()
+
+def allowed_name(s:str):
+    ALLOWED = r"^[a-z0-9_-]+$"
+    return bool(re.match(ALLOWED, s))
 
 async def give_join_roles(member,roles):
     roles = roles.split(":")
-
     for role in roles:
         if member.get_role(int(role)) != None:
             continue
@@ -37,6 +47,7 @@ async def give_join_roles(member,roles):
             logger.waring("Can't give role, internet fault")
 
 def eval_expr(expr, variables):
+    """USE THE OTHER ONE"""
     allowed_operators = {
         ast.Add: operator.add,
         ast.Sub: operator.sub,
@@ -73,6 +84,7 @@ def eval_expr(expr, variables):
         return f"Error: {e}"
 
 def evaluate_formula(formula:str, step:int, npc:int, pvp:int):
+    """USE THIS"""
     variables = {
         'steps': step,
         'step': step,
@@ -112,7 +124,10 @@ async def get_war_guild(ctx:AutocompleteContext):
     if 'wars_list' not in globals():
         wars_list = {} 
     if str(guild_id) not in wars_list or datetime.now().timestamp() - wars_list[str(guild_id)]["time"] >= 300:
-        wars_list[str(guild_id)] = {"time":datetime.now().timestamp(),"wars":tuple(await SMMOApi.get_guild_wars(guild_id, 1)),"autocomplete":[]}
+        try:
+            wars_list[str(guild_id)] = {"time":datetime.now().timestamp(),"wars":tuple(await SMMOApi.get_guild_wars(guild_id, 1)),"autocomplete":[]}
+        except ApiError:
+            return []
         for war in wars_list[str(guild_id)]["wars"]:
             if war.guild_1["id"] == guild_id:
                 # guilds.append([war.guild_2["name"],war.guild_2["id"]])
@@ -186,27 +201,42 @@ async def make_wars_emb(guild, c, v, g2, war_xp,bo:bool|None = None) -> str:
     return msg
     
 
+
 async def make_members_lb(g_id,lb_date,current_date,task:bool=False,reverse:bool=False,live_stats:bool=True):
-    guild = await SMMOApi.get_guild_info(g_id)
+    try:
+        guild = await SMMOApi.get_guild_info(g_id)
+    except ApiError:
+        return None
     if not guild:
         logger.warning("Could not retrive guild data from API")
         return None
     date = get_date_game(lb_date)
     season = await Database.select_last_season()
+    if season is None:
+        return
     guild_data = await Database.select_guild_stats(g_id, date.year, date.month, date.day, season.id)
 
     x: int = guild_data.experience if guild_data else guild.current_season_exp
     total= [0, 0, 0, 0]
-    is_empty,guild_members = gen_is_empty(await SMMOApi.get_guild_members(g_id))
-    if is_empty:
+
+    guild_members_mgr = GuildMembersManager(g_id)
+    await guild_members_mgr.fetch_members(True)
+
+    if len(guild_members_mgr.members) == 0:
         logger.warning("Could not retrive guild members data from API")
         return None
     var = []
-    for m2 in guild_members:
-        m1 = await Database.select_user_stat(m2.user_id,date.year,date.month,date.day)
+    m1_stats = await Database.select_user_stat_bulk([x.user_id for x in guild_members_mgr.members.values()],date.year,date.month,date.day)
+    if not live_stats:
+        m2_stats = await Database.select_user_stat_bulk([x.user_id for x in guild_members_mgr.members.values()],current_date.year,current_date.month,current_date.day)
+    for m2 in guild_members_mgr.members.values():
+        if m2.user_id in m1_stats:
+            m1 = m1_stats[m2.user_id]
+        else:
+            m1 = await Database.select_user_stat(m2.user_id,current_date.year,current_date.month,current_date.day)
         if m1 is not None:
             if not live_stats:
-                m_stats = await Database.select_user_stat(m2.user_id,current_date.year,current_date.month,current_date.day)
+                m_stats = m2_stats[m2.user_id]
                 if m_stats is not None:
                     m2.level = m_stats.level
                     m2.steps = m_stats.steps
@@ -228,8 +258,10 @@ async def make_members_lb(g_id,lb_date,current_date,task:bool=False,reverse:bool
             total[3] += m2.level - m1.level
     
     if len(var) == 0:
-        logger.warning("var empty: member data could not be processed")
+        #logger.warning("var empty: member data could not be processed")
         return None
+    if live_stats:
+        current_date = get_date_game("Yesterday")
     emb = Embed(
         title=f"Members leaderboard",
         description=f"**Guild**: {guild.name}\n"
@@ -256,7 +288,10 @@ async def make_members_lb(g_id,lb_date,current_date,task:bool=False,reverse:bool
 
 async def make_gains_emb():
     season = await Database.select_last_season()
-    is_empty,season_lb = gen_is_empty(await SMMOApi.get_guild_season_leaderboard(season.id))
+    try:
+        is_empty,season_lb = gen_is_empty(await SMMOApi.get_guild_season_leaderboard(season.id))
+    except ApiError:
+        return
     if is_empty:
             return
     emb = Embed(
@@ -268,9 +303,9 @@ async def make_gains_emb():
                         f"**Last update**: <t:{int(datetime.now().timestamp())}:R>",
         )
     msg: str = ""
-    title = ("Celestial", "Legendary", "Epic", "Elite", "Rare")
+    TITLES = ("Celestial", "Legendary", "Epic", "Elite", "Rare")
     date = get_current_date_game()
-    for count in range(5):
+    for title in TITLES:
         for _ in range(5):
             g = next(season_lb)
             s = await Database.select_guild_stats(g.guild["id"],date.year,date.month,date.day,season.id)
@@ -292,7 +327,7 @@ async def make_gains_emb():
                 msg = f"{msg} :arrow_up: +{s.position - g.position}\n"
             else:
                 msg = f"{msg} :arrow_down: {s.position - g.position}\n"
-        emb.add_field(name=title[count], value=msg, inline=False)
+        emb.add_field(name=title, value=msg, inline=False)
         msg = ""
     emb.set_footer(text="Updated every 10 min")
     return emb
@@ -306,7 +341,7 @@ async def get_channel_and_edit(client:Bot,channel_id:int,message_id:int=None,con
             message = await channel.send(content=content,embed=embed,view=view)
         else:
             message = await channel.fetch_message(message_id)
-            await message.edit(content=content,embed=embed)
+            await message.edit(content=content,embed=embed,view=view)
         if delete_after is not None:
             await Database.insert_delmsg(message.id,channel.id,int(delete_after+datetime.now().timestamp()))
         return message
@@ -405,7 +440,12 @@ async def get_user(ctx:ApplicationContext|None=None,smmo_id:int|None=None,user:M
             if ctx is not None:
                 await send(ctx,"User not linked")
             return None
-        smmo_id = smmo_id if smmo_id else bot_user.smmo_id
+        if smmo_id:
+            smmo_id = smmo_id
+            if smmo_id == bot_user.smmo_id:
+                await send(ctx,"Tip: If you want to see your account you don't need to add the smmo id!")
+        else:
+            smmo_id = bot_user.smmo_id
     if smmo_id is None:
         return None
     game_user = await SMMOApi.get_player_info(smmo_id)
@@ -425,8 +465,15 @@ def get_dominant_color(image_url):
 
 
 class Embed(Embed):
+    _color_cache = {}
     def __init__(self,*,colour=None,color=None,title=None,type="rich",url=None,description=None,timestamp=None,fields=None,author=None,footer=None,image=None,thumbnail=None):
-        color = (Color.from_rgb(*get_dominant_color(thumbnail)) if thumbnail else Color.random()) if not color else color
+        temp_color = self._color_cache.get(thumbnail,None)
+        if temp_color is None and thumbnail:
+            temp_color = Color.from_rgb(*get_dominant_color(thumbnail))
+            self._color_cache[thumbnail] = temp_color
+        if thumbnail is None:
+            temp_color = Color.random()
+        color = temp_color if not color else color
         if thumbnail and '://' in thumbnail:
             protocol, rest = thumbnail.split('://', 1)
             rest = rest.replace('//', '/')
@@ -436,68 +483,38 @@ class Embed(Embed):
         super().__init__(colour=colour,color=color,title=title,type=type,url=url,description=description,timestamp=timestamp,fields=fields,author=author,footer=footer,image=image,thumbnail=thumbnail)
         #self.set_footer(text="TEST MODE. Might get random error <-<")
 
-def analyseImage(path):
-    im = Image.open(path)
-    results = {
-        'size': im.size,
-        'mode': 'full',
-    }
-    try:
-        while True:
-            if im.tile:
-                tile = im.tile[0]
-                update_region = tile[1]
-                update_region_dimensions = update_region[2:]
-                if update_region_dimensions != im.size:
-                    results['mode'] = 'partial'
-                    break
-            im.seek(im.tell() + 1)
-    except EOFError:
-        pass
-    return results
+def resize_gif2(input_path, output_path, scale_factor):
+    with Image.open(input_path) as im:
+        frames = []
+        durations = []
+        disposal = im.info.get('disposal', 2)
+        
+        canvas = Image.new("RGBA", im.size)
+        
+        for frame in ImageSequence.Iterator(im):
+            durations.append(frame.info.get('duration', 100))
+            
+            if disposal == 2:
+                canvas.paste((0, 0, 0, 0), [0, 0, im.size[0], im.size[1]])
 
+            frame_rgba = frame.convert("RGBA")
+            canvas.alpha_composite(frame_rgba)
+            
+            new_size = (int(im.size[0] * scale_factor), int(im.size[1] * scale_factor))
+            resized_frame = canvas.resize(new_size, Image.NEAREST)
+            
+            frames.append(resized_frame.convert("RGBA"))
 
-def extract_and_resize_frames(path, resize_to=None):
-    mode = analyseImage(path)['mode']
-    im = Image.open(path)
-    if not resize_to:
-        resize_to = (im.size[0] // 2, im.size[1] // 2)
-    i = 0
-    p = im.getpalette()
-    last_frame = im.convert('RGBA')
-    all_frames = []
-
-    try:
-        while True:
-            new_frame = Image.new('RGBA', im.size)
-            if mode == 'partial':
-                new_frame.paste(last_frame)
-
-            new_frame.paste(im, (0, 0), im.convert('RGBA'))
-            new_frame = new_frame.resize(resize_to,Image.NEAREST)
-            all_frames.append(new_frame)
-
-            i += 1
-            last_frame = new_frame
-            im.seek(im.tell() + 1)
-    except EOFError:
-        pass
-
-    return all_frames
-
-def resize_gif(path, save_as=None, resize_to=None):
-        all_frames = extract_and_resize_frames(path, resize_to)
-
-        if not save_as:
-            save_as = path
-
-        if len(all_frames) == 1:
-            img = Image.open("./temp/ava1.gif")
-            img = img.resize(resize_to,Image.NEAREST)
-
-            img.save('./temp/ava2.gif')
-        else:
-            all_frames[0].save(save_as,optimize=True,save_all=True,append_images=all_frames[1:],loop=1000,quality=100,speed=0,disposal=2)
+        if frames:
+            frames[0].save(
+                output_path,
+                save_all=True,
+                append_images=frames[1:],
+                optimize=True,
+                duration=durations,
+                loop=0,
+                disposal=2
+            )
 
 def human_format(x, pos):
     if x >= 1_000_000:
@@ -516,9 +533,9 @@ def formattime(time: int) -> str:
         hours, minutes = divmod(remaining_time, 60)
         
         components = []
-        if weeks: components.append(f"{weeks}w")
-        if days: components.append(f"{days}d")
-        if hours: components.append(f"{hours}h")
-        if minutes: components.append(f"{minutes}m")
+        if weeks: components.append(f"{int(weeks)}w")
+        if days: components.append(f"{int(days)}d")
+        if hours: components.append(f"{int(hours)}h")
+        if minutes: components.append(f"{int(minutes)}m")
         
         return ''.join(components) or '0m'
