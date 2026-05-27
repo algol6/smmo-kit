@@ -1,6 +1,6 @@
 __pycache__/
 
-data/Database.db
+data/
 temp/
 
 log/
