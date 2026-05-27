@@ -27,6 +27,68 @@ class Guild(Cog):
     def __init__(self, client):
         self.client:Bot = client
 
+
+    @subcommand("guild")
+    @slash_command(description="Easy way to calculate the raid/moe cost")
+    @option(name="n_raids", description="Numbers of raids active")
+    @option(name="h_raid", description="Hours of raids active")
+    @option(name="daily_moe", description="Extimated moe given in one day")
+    @option(name="extra", description="Extra expenses, like daily reward.")
+    @guild_only()
+    @command_utils.auto_defer(False)
+    @command_utils.statistics("/guild costcalc")
+    @command_utils.took_too_long()
+    async def costcalc(self,ctx:ApplicationContext,n_raids:int,h_raid:int,daily_moe:int,extra:int=0):
+        emb = helpers.Embed(title="Cost Calculator")
+
+        raid_cost = n_raids*h_raid*1000000
+        emb.add_field(
+            name="Raids",
+            value=(
+                f"{n_raids} Raids for {h_raid} hours\n"
+                f"- Gold Cost: {n_raids:,} x {h_raid:,} x 1,000,000 = {raid_cost:,}\n"
+                f"- PP Cost: {h_raid*n_raids:,}"
+            ),
+            inline=False
+        )
+
+        moe_cost = daily_moe*30000
+        emb.add_field(
+            name="MoEs",
+            value=f"N Moes: {daily_moe:,}\nMoes Cost: {daily_moe:,} x 30,000 = {moe_cost:,}\n",
+            inline=False
+        )
+
+        if extra != 0:
+            emb.add_field(
+                name="Extra",
+                value=f"Extra Cost: {extra:,}",
+                inline=False
+            )
+
+        total_cost = moe_cost+raid_cost+extra
+
+        total_pp = h_raid*n_raids + 1
+        emb.add_field(
+            name="Total",
+            value=(
+                f"Daily:\n"
+                f"- Gold Cost: {total_cost:,}\n"
+                f"- PP Cost: {total_pp:,}\n"
+                f"\nWeekly:\n"
+                f"- Gold Cost: {total_cost*7:,}\n"
+                f"- PP Cost: {total_pp*7:,}\n"
+                f"\nMonthly (28 days):\n"
+                f"- Gold Cost: {total_cost*28:,}\n"
+                f"- PP Cost: {total_pp*28:,}\n"
+            ),
+            inline=False
+        )
+
+        await helpers.send(ctx,embed=emb)
+
+
+
     @subcommand("guild")
     @slash_command(description="Get the best exp gains the guild has ever done")
     @guild_only()
@@ -36,7 +98,7 @@ class Guild(Cog):
     @command_utils.took_too_long()
     async def overall(self,ctx:ApplicationContext,guild_id:int=None):
         if guild_id is None:
-            guild_id = ctx.user_guild_id
+            guild_id = ctx.game_guild_id
         guild = await SMMOApi.get_guild_info(guild_id)
         if guild is None:
             return await helpers.send(ctx,content="Guild id not found")
@@ -86,7 +148,7 @@ class Guild(Cog):
     @command_utils.took_too_long()
     async def staff(self,ctx:ApplicationContext) -> None:
         embed = helpers.Embed(title="Staff list")
-        guild_member = await SMMOApi.get_guild_members(ctx.user_guild_id)
+        guild_member = await SMMOApi.get_guild_members(ctx.game_guild_id)
         x = {"Leader":"","Co-leader":[],"Officer":[]}
         for member in guild_member:
             if member.position == "Leader":
@@ -130,21 +192,24 @@ class Guild(Cog):
     @command_utils.statistics("/guild members")
     @command_utils.took_too_long()
     async def members_list(self,ctx:ApplicationContext) -> None:
-        guild_member = await SMMOApi.get_guild_members(ctx.user_guild_id)
-        guild_info = await SMMOApi.get_guild_info(ctx.user_guild_id)
-        x:list[str] = []
-        x:dict = {"Leader":"","Co-leader":[],"Officer":[],"Member":[]}
+        guild_member = await SMMOApi.get_guild_members(ctx.game_guild_id)
+        guild_info = await SMMOApi.get_guild_info(ctx.game_guild_id)
+        x:dict = {"Leader":"","Co Leader":[],"Officer":[],"Member":[],"Attackable":[],"Author":[]}
         for member in guild_member:
             bot_user = await Database.select_user_smmoid(member.user_id)
+            msg = (
+                f"[{member.name}](https://simple-mmo.com/user/view/{member.user_id}) "
+                f"{" :shield:" if member.safe_mode else ""}{" :crossed_swords:" if member.warrior else ""}"
+                f"(**Lvl**:{member.level:,}){f" <@{bot_user.discord_id}>" if bot_user is not None else ""}"
+            )
             if member.position == "Leader":
-                x["Leader"] = f"[{member.name}](https://simple-mmo.com/user/view/{member.user_id}) (**Lvl**:{member.level:,}){f" <@{bot_user.discord_id}>" if bot_user is not None else ""}"
-            elif member.position == "Co Leader":
-                x["Co-leader"].append(f"[{member.name}](https://simple-mmo.com/user/view/{member.user_id}) (**Lvl**:{member.level:,}){f" <@{bot_user.discord_id}>" if bot_user is not None else ""}")
-            elif member.position == "Officer":
-                x["Officer"].append(f"[{member.name}](https://simple-mmo.com/user/view/{member.user_id}) (**Lvl**:{member.level:,}){f" <@{bot_user.discord_id}>" if bot_user is not None else ""}")
+                x[member.position] = msg
+            elif member.position != "Member":
+                x[member.position].append(msg)
+            if not member.safe_mode:
+                x["Attackable"].append(msg)
+            x["Member"].append(msg)
 
-            x["Member"].append(f"[{member.name}](https://simple-mmo.com/user/view/{member.user_id}) (**Lvl**:{member.level:,}){f" <@{bot_user.discord_id}>" if bot_user is not None else ""}")
-            
         mblist_view = MemberListView()
         mblist_view.data = x
         mblist_view.icon = guild_info.icon
@@ -195,6 +260,7 @@ class Guild(Cog):
         if not guild_id.isdigit():
             return await helpers.send(ctx,content="Guild ID not found")
         guild = await SMMOApi.get_guild_info(guild_id)
+        
         if guild is None:
             return await helpers.send(ctx,content="Guild not found")
 
@@ -203,14 +269,14 @@ class Guild(Cog):
         for member in guild_members:
             if member.safe_mode:
                 continue
-            targets.append(await SMMOApi.get_player_info(member.user_id))
+            targets.append((await SMMOApi.get_player_info(member.user_id),member.warrior))
 
         if len(targets) == 0:
             return helpers.send(ctx,content="No Player without safe mode found")
         target_view = WarTargetView()
         target_view.data = (
-            tuple(x for x in targets if x.hp >= x.max_hp/2),
-            sorted(targets,key=lambda item: item.hp/item.max_hp)
+            tuple(x for x in targets if x[0].hp > x[0].max_hp/2),
+            sorted(targets,key=lambda item: item[0].hp/item[0].max_hp)
         )
         target_view.guild_info = guild
         target_view.updated = datetime.now()
@@ -219,13 +285,13 @@ class Guild(Cog):
     @subcommand("guild")
     @slash_command(description="Show war progress of the guild(works only with top 50 guilds)")
     @guild_only()
-    @permissions.require_linked_server()
     @command_utils.auto_defer(False)
+    @permissions.require_linked_server()
     @command_utils.statistics("/guild wars")
     @command_utils.took_too_long()
     async def wars(self, ctx: ApplicationContext, guild_id: int = None, war_xp:bool = False) -> None:
         if guild_id is None:
-            guild_id = ctx.user_guild_id
+            guild_id = ctx.game_guild_id
         season_id: int = await Database.select_last_season_id()
         season_lb = await SMMOApi.get_guild_season_leaderboard(season_id)
 
@@ -299,7 +365,7 @@ class Guild(Cog):
     @command_utils.took_too_long()
     async def stepping(self,ctx:ApplicationContext,who:str="Current",guild_id:int=None,show_names:str="No") -> None:
         if guild_id is None:
-            guild_id = ctx.user_guild_id
+            guild_id = ctx.game_guild_id
         members = await SMMOApi.get_guild_members(guild_id)
         message = await helpers.send(ctx,content="List of steppers will be loaded here.")
         embed = helpers.Embed(title=f"Here the location of {'all' if who == 'All' else 'current'} steppers")
@@ -364,7 +430,7 @@ class Guild(Cog):
     @command_utils.took_too_long()
     async def members_lb(self,ctx:ApplicationContext,timeframe:str="Daily",guild_id:int=None,reverse:bool=False) -> None:
         if guild_id is None:
-            guild_id = ctx.user_guild_id
+            guild_id = ctx.game_guild_id
         date = helpers.get_date_game(timeframe)
         to_date = helpers.get_current_date_game() 
         if timeframe != "Yesterday":
@@ -376,12 +442,12 @@ class Guild(Cog):
         
     @subcommand("guild members")
     @slash_command(description="Show the stats of the guild, default: Yesterday")
-    @permissions.require_linked_server()
+    @command_utils.auto_defer(False)
     @guild_only()
     @option(name="timeframe",choices=["Daily","Past 7 Days","In-Game Weekly","Yesterday","Monthly","In-Game Monthly"])
     @option(name="from_date", description="Write data in format dd/mm/yyyy. default 7 days ago")
     @option(name="to_date", description="Write data in format dd/mm/yyyy. default today.")
-    @command_utils.auto_defer(False)
+    @permissions.require_linked_server()
     @command_utils.statistics("/guild members advlb")
     @command_utils.took_too_long()
     async def advlb(self,ctx:ApplicationContext,timeframe:str="Yesterday",from_date:str=None,to_date:str=None,guild_id:int=None) -> None:
@@ -469,7 +535,7 @@ class Guild(Cog):
     @command_utils.statistics("/guild requirements")
     @command_utils.took_too_long()
     async def requirements(self, ctx: ApplicationContext):
-        req = await Database.select_requirements(ctx.user_guild_id)
+        req = await Database.select_requirements(ctx.game_guild_id)
         if req is None:
             return await helpers.send(ctx,content="There are no requirements set.")
         msg: str = f"**Gains you need to meet every {f'*{req.days}* days' if req.days != 1 else 'day'}**:\n"

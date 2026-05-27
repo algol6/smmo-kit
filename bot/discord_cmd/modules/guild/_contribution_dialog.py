@@ -17,16 +17,21 @@ class ContributionModal(discord.ui.Modal):
         user = await SMMOApi.get_me(self.api_key)
         if user is None:
             return await interaction.respond("API Key not valid.")
-        data = [[],[],[],[],[]]
+        data = [[],[],[],[],[],[],[],[]]
         for member in await SMMOApi.get_guild_members(user.guild["id"]):
             contr = await SMMOApi.get_guild_member_contribution(user.guild["id"], member.user_id, self.api_key)
             if contr is None:
                 continue
             data[0].append({"name":member.name,"id":member.user_id,"stats":contr.power_points_deposited})
             data[1].append({"name":member.name,"id":member.user_id,"stats":contr.gold_deposited})
-            data[2].append({"name":member.name,"id":member.user_id,"stats":(contr.pve_exp + contr.pvp_exp)})
-            data[3].append({"name":member.name,"id":member.user_id,"stats":contr.tax_contribution["guild_bank"]})
-            data[4].append({"name":member.name,"id":member.user_id,"stats":contr.tax_contribution["sanctuary"]})
+            data[2].append({"name":member.name,"id":member.user_id,"stats":contr.pve_exp, "count":contr.pve_kills})
+            data[3].append({"name":member.name,"id":member.user_id,"stats":contr.pvp_exp, "count":contr.pvp_kills})
+            data[4].append({"name":member.name,"id":member.user_id,"stats":contr.steps_experience, "count":contr.steps_taken})
+            data[5].append({"name":member.name,"id":member.user_id,"stats":contr.nodes_experience, "count":contr.nodes_gathered})
+            data[6].append({"name":member.name,"id":member.user_id,"stats":contr.tax_contribution["guild_bank"]})
+            data[7].append({"name":member.name,"id":member.user_id,"stats":contr.tax_contribution["sanctuary"]})
+
+        
         data = [sorted(x, key=lambda item: -item["stats"]) for x in data]
         contribution_view = ContributionView()
         contribution_view.data = data

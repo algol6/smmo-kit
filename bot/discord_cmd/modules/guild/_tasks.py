@@ -13,8 +13,10 @@ class GuildTask(Cog):
         self.client = client
         self.check_stats.start()
         self.check_raid.start()
-        # import asyncio
-        # asyncio.run(self.check_stats())
+        #import asyncio
+        #asyncio.run(self.check_stats())
+        #asyncio.run(self.check_stats(end_season=True))
+        #asyncio.run(self.check_stats(start_season=False))
 
     def cog_unload(self):
         self.check_stats.cancel()
@@ -25,14 +27,16 @@ class GuildTask(Cog):
     async def check_stats(self, end_season:bool=False,start_season:bool=False):
         logger.info("Started saving guild stats.")
         season_id:int = await Database.select_last_season_id()
-        current_guild = await SMMOApi.get_guild_season_leaderboard(season_id)
         id = set()
         guilds: list[int] = await Database.select_all_server_guild()
         date = datetime.now(tz=timezone.utc)
         if end_season:
             date = helpers.get_current_date_game() + timedelta(days=1)
+            season_id -=1
         elif start_season:
+            season_id +=1
             date = helpers.get_current_date_game()
+        current_guild = await SMMOApi.get_guild_season_leaderboard(season_id)
         date_timestamp = date.timestamp()
         for g in current_guild:
             try:

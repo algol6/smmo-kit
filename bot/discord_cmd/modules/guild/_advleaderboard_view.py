@@ -4,13 +4,13 @@ from bot.discord_cmd.helpers import helpers
 class AdvleaderboardView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
+        self.tier = 0
+        self.data_type = 0
     
     current_page: int = 1
     sep: int = 10
 
     async def send(self, ctx: discord.ApplicationContext):
-        self.tier = 0
-        self.data_type = 0
         await ctx.followup.send(view=self)
         await self.update_message(self.data[self.tier][self.data_type][:self.sep])
         
@@ -71,111 +71,111 @@ class AdvleaderboardView(discord.ui.View):
         emb.set_footer(text=f"Page {self.current_page}/{(len(self.data[self.tier][self.data_type])) // self.sep + 1}")
         return emb
 
-    @discord.ui.button(label="|<", style=discord.ButtonStyle.green)
+    @discord.ui.button(label="|<", style=discord.ButtonStyle.green,row=0)
     async def first_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         await interaction.response.defer()
         self.current_page = 1
         await self.update_message(self.get_current_page_data())
             
 
-    @discord.ui.button(label="<", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="<", style=discord.ButtonStyle.primary,row=0)
     async def prev_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         await interaction.response.defer()
         self.current_page -= 1
         await self.update_message(self.get_current_page_data())
 
 
-    @discord.ui.button(label=">", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label=">", style=discord.ButtonStyle.primary,row=0)
     async def next_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         await interaction.response.defer()
         self.current_page += 1
         await self.update_message(self.get_current_page_data())
 
 
-    @discord.ui.button(label=">|", style=discord.ButtonStyle.green)
+    @discord.ui.button(label=">|", style=discord.ButtonStyle.green,row=0)
     async def last_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         await interaction.response.defer()
         self.current_page = int((len(self.data[self.tier][self.data_type])) / self.sep) + 1
         await self.update_message(self.get_current_page_data())
 
-    @discord.ui.button(label="All", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="All", style=discord.ButtonStyle.primary,row=0)
     async def all_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         await interaction.response.defer()
         self.current_page = 1
         self.tier = 0
         await self.update_message(self.get_current_page_data())
 
-    @discord.ui.button(label="NPC", style=discord.ButtonStyle.green)
+    @discord.ui.button(label="NPC", style=discord.ButtonStyle.green,row=1)
     async def npc_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         await interaction.response.defer()
         self.current_page = 1
         self.data_type = 0
         await self.update_message(self.get_current_page_data())
 
-    @discord.ui.button(label="PVP", style=discord.ButtonStyle.green)
+    @discord.ui.button(label="PVP", style=discord.ButtonStyle.green,row=1)
     async def pvp_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         await interaction.response.defer()
         self.current_page = 1
         self.data_type = 1
         await self.update_message(self.get_current_page_data())
 
-    @discord.ui.button(label="STEPS", style=discord.ButtonStyle.green)
+    @discord.ui.button(label="STEPS", style=discord.ButtonStyle.green,row=1)
     async def steps_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         await interaction.response.defer()
         self.current_page = 1
         self.data_type = 2
         await self.update_message(self.get_current_page_data())
 
-    @discord.ui.button(label="LEVELS", style=discord.ButtonStyle.green)
+    @discord.ui.button(label="LEVELS", style=discord.ButtonStyle.green,row=1)
     async def levels_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         await interaction.response.defer()
         self.current_page = 1
         self.data_type = 3
         await self.update_message(self.get_current_page_data())
 
-    @discord.ui.button(label="Tier 1", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Tier 1", style=discord.ButtonStyle.primary,row=2)
     async def tier1_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         await interaction.response.defer()
         self.current_page = 1
         self.tier = 1
         await self.update_message(self.get_current_page_data())
 
-    @discord.ui.button(label="Tier 2", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Tier 2", style=discord.ButtonStyle.primary,row=2)
     async def tier2_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         await interaction.response.defer()
         self.current_page = 1
         self.tier = 2
         await self.update_message(self.get_current_page_data())
 
-    @discord.ui.button(label="Tier 3", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Tier 3", style=discord.ButtonStyle.primary,row=2)
     async def tier3_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         await interaction.response.defer()
         self.current_page = 1
         self.tier = 3
         await self.update_message(self.get_current_page_data())
 
-    @discord.ui.button(label="Tier 4", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Tier 4", style=discord.ButtonStyle.primary,row=3)
     async def tier4_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         await interaction.response.defer()
         self.current_page = 1
         self.tier = 4
         await self.update_message(self.get_current_page_data())
 
-    @discord.ui.button(label="Tier 5", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Tier 5", style=discord.ButtonStyle.primary,row=3)
     async def tier5_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         await interaction.response.defer()
         self.current_page = 1
         self.tier = 5
         await self.update_message(self.get_current_page_data())
 
-    @discord.ui.button(label="Tier 6", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Tier 6", style=discord.ButtonStyle.primary,row=3)
     async def tier6_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         await interaction.response.defer()
         self.current_page = 1
         self.tier = 6
         await self.update_message(self.get_current_page_data())
 
-    @discord.ui.button(label="Tier 7", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Tier 7", style=discord.ButtonStyle.primary,row=3)
     async def tier7_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         await interaction.response.defer()
         self.current_page = 1

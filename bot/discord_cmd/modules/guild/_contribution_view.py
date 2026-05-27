@@ -64,21 +64,21 @@ class ContributionView(discord.ui.View):
             until_item = len(self.data[self.tier])
         return self.data[self.tier][from_item:until_item]
     
-
     async def create_embed(self, data):
-        tiers_name:list[str] = ["Power Point","Gold","Gxp","Guild Bank","Sanctuary"]
-        thumbnail:list[str] = ["https://simple-mmo.com/img/icons/one/icon139.png","https://simple-mmo.com/img/icons/I_GoldCoin.png","https://simple-mmo.com/img/icons/S_Light01.png","https://web.simple-mmo.com/img/icons/one/icon367.png","https://web.simple-mmo.com/img/icons/two/32px/CoinGold1_32.png"]
-        colors:list[hex] = [0xc0392b,0xe67e22,0x2980b9,0xffe886,0xffec9d]
+        tiers_name:list[str] = ["Power Point","Gold","Npc","Pvp","Steps","Mats Nodes","Guild Bank","Sanctuary"]
+        thumbnail:list[str] = ["https://simple-mmo.com/img/icons/one/icon139.png","https://simple-mmo.com/img/icons/I_GoldCoin.png","https://simple-mmo.com/img/icons/S_Light01.png","https://simple-mmo.com/img/icons/S_Light01.png","https://simple-mmo.com/img/icons/A_Shoes01.png","https://simple-mmo.com/img/icons/I_GoldBar.png","https://web.simple-mmo.com/img/icons/one/icon367.png","https://web.simple-mmo.com/img/icons/two/32px/CoinGold1_32.png"]
+  
         desc = ""
-        if self.tier == 3:
+        if self.tier == 6:
             desc = f"Total tax collected: {sum(x['stats'] for x in self.data[self.tier]):,}"
-        elif self.tier == 4:
+        elif self.tier == 7:
             desc = f"Total Sanctuary contributed: {sum(x['stats'] for x in self.data[self.tier]):,}"
 
-        emb = helpers.Embed(title=f"{tiers_name[self.tier]}",
-                            color=colors[self.tier],
-                            description=desc,
-                            thumbnail=thumbnail[self.tier])
+        emb = helpers.Embed(
+            title=f"{tiers_name[self.tier]}",
+            description=desc,
+            thumbnail=thumbnail[self.tier]
+        )
         until_item = self.current_page * self.sep
         from_item = until_item - self.sep
         
@@ -128,23 +128,44 @@ class ContributionView(discord.ui.View):
         self.tier = 1
         await self.update_message(self.get_current_page_data())
 
-    @discord.ui.button(label="Gxp", style=discord.ButtonStyle.primary)
-    async def gxp(self, button:discord.ui.Button, interaction:discord.Interaction):
+    @discord.ui.button(label="Npc", style=discord.ButtonStyle.primary)
+    async def npc(self, button:discord.ui.Button, interaction:discord.Interaction):
         await interaction.response.defer()
         self.current_page = 1
         self.tier = 2
+        await self.update_message(self.get_current_page_data())
+
+    @discord.ui.button(label="Pvp", style=discord.ButtonStyle.primary)
+    async def pvp(self, button:discord.ui.Button, interaction:discord.Interaction):
+        await interaction.response.defer()
+        self.current_page = 1
+        self.tier = 3
+        await self.update_message(self.get_current_page_data())
+
+    @discord.ui.button(label="Steps", style=discord.ButtonStyle.primary)
+    async def steps(self, button:discord.ui.Button, interaction:discord.Interaction):
+        await interaction.response.defer()
+        self.current_page = 1
+        self.tier = 4
+        await self.update_message(self.get_current_page_data())
+
+    @discord.ui.button(label="Mats Nodes", style=discord.ButtonStyle.primary)
+    async def nodes(self, button:discord.ui.Button, interaction:discord.Interaction):
+        await interaction.response.defer()
+        self.current_page = 1
+        self.tier = 5
         await self.update_message(self.get_current_page_data())
 
     @discord.ui.button(label="Guild Bank", style=discord.ButtonStyle.primary)
     async def guild_bank(self, button:discord.ui.Button, interaction:discord.Interaction):
         await interaction.response.defer()
         self.current_page = 1
-        self.tier = 3
+        self.tier = 6
         await self.update_message(self.get_current_page_data())
 
     @discord.ui.button(label="Sanctuary", style=discord.ButtonStyle.primary)
     async def sanctuary(self, button:discord.ui.Button, interaction:discord.Interaction):
         await interaction.response.defer()
         self.current_page = 1
-        self.tier = 4
+        self.tier = 7
         await self.update_message(self.get_current_page_data())

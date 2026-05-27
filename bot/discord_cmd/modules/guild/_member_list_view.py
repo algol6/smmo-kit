@@ -8,17 +8,6 @@ class MemberListView(discord.ui.View):
     current_page: int = 1
     sep: int = 10
 
-    async def on_timeout(self):
-        self.disable_all_items()
-        self.prev_button.style = discord.ButtonStyle.gray
-        self.next_button.style = discord.ButtonStyle.gray
-        self.first_button.style = discord.ButtonStyle.gray
-        self.last_button.style = discord.ButtonStyle.gray
-        self.member_button.style = discord.ButtonStyle.gray
-        self.leader_button.style = discord.ButtonStyle.gray
-        self.coleader_button.style = discord.ButtonStyle.gray
-        self.officer_button.style = discord.ButtonStyle.gray
-
     async def send(self, ctx: discord.ApplicationContext):
         self.ctx = ctx
         self.type = "Member"
@@ -59,6 +48,8 @@ class MemberListView(discord.ui.View):
 
 
     def get_current_page_data(self):
+        if self.type == "Leader":
+            return self.data[self.type]
         until_item = self.current_page * self.sep
         from_item = until_item - self.sep
         if self.current_page == 1:
@@ -74,8 +65,12 @@ class MemberListView(discord.ui.View):
         emb = helpers.Embed(title=f"{self.name}'s {self.type}",
                             description=f"**Updated**: <t:{self.updated}:R>",
                             thumbnail=f"https://simple-mmo.com/img/icons/{self.icon}")
-        if len(data) != 0:
-            emb.add_field(name="", value="\n".join(data))
+       
+        if len(data) != 0 and self.type != "Leader":
+            emb.add_field(name="", value="\n".join(data[:5]),inline=False)
+            emb.add_field(name="", value="\n".join(data[5:]),inline=False)
+        elif self.type == "Leader":
+            emb.add_field(name="", value=data)
         else:
             emb.add_field(name="", value="No members (?)")
         emb.set_footer(text=f"Page {self.current_page}/{(len(self.data[self.type])) // self.sep + 1}")
@@ -127,7 +122,7 @@ class MemberListView(discord.ui.View):
     @discord.ui.button(label="Co-leaders", style=discord.ButtonStyle.primary)
     async def coleader_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         await interaction.response.defer()
-        self.type = "Co-leader"
+        self.type = "Co Leader"
         self.current_page = 1
         self.tier = 0
         await self.update_message(self.get_current_page_data())
@@ -136,6 +131,22 @@ class MemberListView(discord.ui.View):
     async def officer_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         await interaction.response.defer()
         self.type = "Officer"
+        self.current_page = 1
+        self.tier = 0
+        await self.update_message(self.get_current_page_data())
+
+    @discord.ui.button(label="Author", style=discord.ButtonStyle.primary)
+    async def author_button(self, button:discord.ui.Button, interaction:discord.Interaction):
+        await interaction.response.defer()
+        self.type = "Author"
+        self.current_page = 1
+        self.tier = 0
+        await self.update_message(self.get_current_page_data())
+
+    @discord.ui.button(label="Attackable", style=discord.ButtonStyle.primary,row=2)
+    async def atk_button(self, button:discord.ui.Button, interaction:discord.Interaction):
+        await interaction.response.defer()
+        self.type = "Attackable"
         self.current_page = 1
         self.tier = 0
         await self.update_message(self.get_current_page_data())

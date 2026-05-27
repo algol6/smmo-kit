@@ -67,11 +67,11 @@ class WarTargetView(discord.ui.View):
         if self.updated.minute % 5 != 0:
             self.updated += timedelta(minutes=5-(self.updated.minute % 5))
     
-        for user in data:
+        for user,is_warrior in data:
             percentage = 0.1 if user.membership else 0.05
             rel_hp = user.hp/user.max_hp
             is_attk = rel_hp>=0.5
-            emb.add_field(name=f"{user.name} [{user.id}]", 
+            emb.add_field(name=f"{user.name} [{user.id}]{" :crossed_swords:" if is_warrior else ""}", 
                           value=f"Lvl: {user.level:,}\n"
                                 f"HP: {rel_hp:.0%} {":heart:" if is_attk else ":broken_heart:"}"
                                 f"{f"\nAttackable in: <t:{int((self.updated + timedelta(minutes=(ceil((0.5-(rel_hp))/percentage)*5))).timestamp())}:R>" if not is_attk else ""}",
