@@ -1,1 +1,1 @@
-from ._db import Database
+from ._db import Database, TrialDatabase
