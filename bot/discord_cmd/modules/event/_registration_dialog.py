@@ -27,11 +27,11 @@ class RegistrationModal(discord.ui.Modal):
         e_date = helpers.get_date_game(self.e_date)
 
         if s_date is None or e_date is None:
-           return await interaction.respond(content="Wrong date format in 'starting_date' or 'ending_date'. use dd/mm/yyyy format")
+           return await interaction.followup.send(content="Wrong date format in 'starting_date' or 'ending_date'. use dd/mm/yyyy format")
         if s_date <= datetime.now(tz=timezone.utc):
-            return await interaction.respond(content="Start date can't be before the current date.")
+            return await interaction.followup.send(content="Start date can't be before the current date.")
         if e_date <= s_date:
-            return await interaction.respond(content="End date can't be before the start date.")
+            return await interaction.followup.send(content="End date can't be before the start date.")
         if self.formula!=" ":
             temp_step = 5
             temp_npc = 1

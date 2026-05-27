@@ -8,6 +8,7 @@ from bot.database import Database
 from bot.database.model import EventTeam,UserStat
 from bot.discord_cmd.helpers import permissions, command_utils, helpers
 from bot.discord_cmd.modules.event._tasks import EventTasks
+from bot.core._event import EventManager
 
 from bot.discord_cmd.modules.event._leaderboard_view import EvtLeaderboardView
 from bot.discord_cmd.modules.event._event_global_list_view import EventListView
@@ -15,10 +16,10 @@ from bot.discord_cmd.modules.event._preview_registration_view import PreviewRegi
 from bot.discord_cmd.modules.event._registration_dialog import RegistrationModal
 from bot.discord_cmd.modules.event._history_view import HistoryView
 from bot.discord_cmd.modules.event._participants_view import ParticipantsView 
+from bot.discord_cmd.modules.event._create_teams_view import CreateTeamsView
 
-from datetime import time, datetime, timezone
+from datetime import time, datetime, timezone, timedelta
 from random import shuffle
-from collections import Counter, defaultdict
 
 # bot do random team anyway then can be customized
 
@@ -32,25 +33,77 @@ from collections import Counter, defaultdict
 class Events(commands.Cog):
     def __init__(self, client:Bot) -> None:
         self.client = client
-    # @subcommand("admin event")
-    # @slash_command(description="Create custom Teams for the event")
-    # @discord.guild_only()
-    # @command_utils.auto_defer()
-    # @permissions.require_admin_or_staff()
-    # @permissions.require_linked_server()
-    # @permissions.took_too_long()
-    # async def create_teams(self, ctx: ApplicationContext, event_id:int=None):
-    #     evt = await Database.select_all_guild_events(await Database.select_server(ctx.guild_id))
-    #     if len(evt) == 0:
-    #         return await ctx.followup.send(content="No event found for this guild")
-    #     elif len(evt) == 1:
-    #         event_id = evt[0].id
-    #     elif len(evt) != 1 and event_id is None:
-    #         return await ctx.followup.send(content=f"More event found.\nInsert the event_id of the event you want to see.\nEvents you are in: `{"`  `".join(v.id for v in evt)}`")
-    #     elif  event_id not in set(v.id for v in evt):
-    #         return await ctx.followup.send(content="Event id not found")
+
+
+    @subcommand("admin event")
+    @slash_command(description="Remove a user from a team")
+    @guild_only()
+    @command_utils.auto_defer()
+    @permissions.require_admin_or_staff()
+    @permissions.require_linked_server()
+    @command_utils.statistics("/event remove_user_from_team")
+    @command_utils.took_too_long()
+    async def remove_user_from_team(self, ctx: ApplicationContext, event_id:int, user:Member):
+        discord_user = await Database.select_user_discord(user.id)
+        if discord_user is None:
+            return await ctx.followup.send("User not found")
+        partecipant = await Database.select_event_partecipant(event_id,discord_user.smmo_id)
+        if partecipant is None:
+            return await ctx.followup.send("User not found in the event")
+        if not await Database.update_event_partecipant(discord_user.smmo_id,event_id,""):
+            return await ctx.followup.send("Error during update")
+        await ctx.followup.send("User remove from the team changed.")
+
+
+    @subcommand("admin event")
+    @slash_command(description="Change the amount of bonus point of a user")
+    @guild_only()
+    @command_utils.auto_defer()
+    @permissions.require_admin_or_staff()
+    @permissions.require_linked_server()
+    @command_utils.statistics("/event set_points")
+    @command_utils.took_too_long()
+    async def set_points(self, ctx: ApplicationContext, event_id:int, user:Member, points:int):
+        discord_user = await Database.select_user_discord(user.id)
+        if discord_user is None:
+            return await ctx.followup.send("User not found")
+        partecipant = await Database.select_event_partecipant(event_id,discord_user.smmo_id)
+        if partecipant is None:
+            return await ctx.followup.send("User not found in the event")
+
+        if not await Database.update_event_partecipant_points(discord_user.smmo_id,event_id,points):
+            return await ctx.followup.send("Error during update")
+        await ctx.followup.send("Points changed.")
+
+    @subcommand("admin event")
+    @slash_command(description="Create custom Teams for the event")
+    @guild_only()
+    @command_utils.auto_defer()
+    @permissions.require_admin_or_staff()
+    @permissions.require_linked_server()
+    @command_utils.statistics("/event create_teams")
+    @command_utils.took_too_long()
+    async def create_teams(self, ctx: ApplicationContext, event_id:int=None):
+        evt = tuple(await Database.select_all_guild_events(await Database.select_server(ctx.guild_id)))
+        if len(evt) == 0:
+            return await ctx.followup.send(content="No event found for this guild")
+        elif len(evt) == 1:
+            event_id = evt[0].id
+            evt = evt[0]
+        elif len(evt) != 1 and event_id is None:
+            return await ctx.followup.send(content=f"More than one event found.\nInsert the event_id of the event you want to see.\nEvents you are in: `{"`  `".join(str(v.id) for v in evt)}`")
+        elif event_id is not None and event_id not in set(v.id for v in evt):
+            return await ctx.followup.send(content="Event id not found")
+        else:
+            for v in evt:
+                if v.id == event_id:
+                    evt = v
+                    break
         
-    #     ## HOW TF I SHOULD DO IT T-T
+        view = CreateTeamsView()
+        view.evt = evt
+        await view.send(ctx)
+     
 
     @subcommand("event")
     @slash_command(description="Show the list of global events",name="list")
@@ -81,7 +134,7 @@ class Events(commands.Cog):
     async def info(self, ctx: ApplicationContext, event_id:int=None):
         bot_user = await Database.select_user_discord(ctx.user.id)
         is_empty,user_events = helpers.gen_is_empty(await Database.select_event_user_partecipants(bot_user.smmo_id))
-        if is_empty:
+        if is_empty and event_id is None:
             return await helpers.send(ctx,content="You aren't in an event")
         elif event_id is None:
             event_id = next(user_events).event_id
@@ -91,8 +144,8 @@ class Events(commands.Cog):
                 if evt.event_id == event_id:
                     found = True
                     break
-            if not found:
-                return await helpers.send(ctx,content="You aren't in that event")
+            #if not found:
+            #    return await helpers.send(ctx,content="You aren't in that event")
         evt = await Database.select_event(event_id) 
         if evt is None:
             return await helpers.send(ctx,content="Event not found")
@@ -123,7 +176,6 @@ class Events(commands.Cog):
     @command_utils.took_too_long()
     async def participants(self, ctx: ApplicationContext, event_id:int=None):
         bot_user = await Database.select_user_discord(ctx.user.id)
-
         is_empty,user_events = helpers.gen_is_empty(await Database.select_event_user_partecipants(bot_user.smmo_id))
         if is_empty:
             return await helpers.send(ctx,content="You aren't in an event")
@@ -140,16 +192,11 @@ class Events(commands.Cog):
         evt = await Database.select_event(event_id) 
 
         event_participants = await Database.select_event_partecipants(evt.id)
-        grouped = defaultdict(list)
-        c = 0
-        for member in event_participants:
-            c+=1
-            grouped[member.team].append(member)
+    
         view = ParticipantsView()
-        view.np = c
         view.evt = evt
         view.team_size = evt.team_size
-        view.event_participants = [(members[0].team, members) for members in grouped.values()]
+        view.event_participants = sorted(event_participants,key=lambda member: member.team)
         await view.send(ctx)
             
 
@@ -174,12 +221,12 @@ class Events(commands.Cog):
         await evt.send(ctx)
 
     @subcommand("admin event")
-    #@slash_command(description="Set up and event in this server", guild_ids=[1175190899182030888,1319980713541505044])
     @slash_command(description="Set up a custom event in the current channel")
     @guild_only()
     @option(name="custom_image", description="Specifies the link of an image/gif to be embedded within the text")
     @permissions.require_admin_or_staff()
     @permissions.require_linked_account()
+    @permissions.require_linked_server()
     @command_utils.statistics("/event setup")
     @command_utils.took_too_long()
     async def setup(self,ctx:ApplicationContext,teams_size:int=1,custom_image:str=None,custom_thumbnail:str=None):
@@ -188,14 +235,14 @@ class Events(commands.Cog):
             await ch.send(content="test message.", delete_after=1)
         except Exception:
             return await ctx.followup.send(content="Bot doesn't have the perms to see/write the channel.")
-        player = await SMMOApi.get_player_info(ctx.discord_user.smmo_id)
+        player = ctx.user_game_profile if ctx.user_game_profile else await SMMOApi.get_player_info(ctx.discord_user.smmo_id) 
         modal = RegistrationModal(title="Event Setup")
         modal.player = player
         modal.custom_image = custom_image
         modal.custom_thumbnail = custom_thumbnail
         modal.team_size = teams_size
         modal.author_id = ctx.author.id
-        modal.igguild_id = await Database.select_server(ctx.guild.id)
+        modal.igguild_id = player.guild.id
         await ctx.send_modal(modal)
         
     @subcommand("admin event")
@@ -250,14 +297,15 @@ class Events(commands.Cog):
     @command_utils.auto_defer()
     @command_utils.statistics("/event add_participant")
     @command_utils.took_too_long()
-    async def add_participant(self,ctx:ApplicationContext,event_id:int,user:User=None):
+    async def add_participant(self,ctx:ApplicationContext,event_id:int,user:User):
         user_discord = await Database.select_user_discord(user.id)
         if user_discord is None:
             return await helpers.send(ctx,content=f"User not linked with the bot")
         evt = await Database.select_event(event_id)
         server = await Database.select_server(ctx.guild_id)
         if evt is None or not (evt.guildies_only and evt.guild_id==server):
-            return await helpers.send(ctx,content=f"Not allowed to add participant in this event")
+            pass
+            #return await helpers.send(ctx,content=f"Not allowed to add participant in this event")
         user_game = await SMMOApi.get_player_info(user_discord.smmo_id)
         await Database.insert_event_partecipant(user_discord.smmo_id,user_game.name,user_discord.discord_id,evt.id,"")
         await helpers.send(ctx,content=f"Player added to event")
@@ -286,7 +334,7 @@ class Events(commands.Cog):
                     break
             if not found:
                 return await helpers.send(ctx,content="You aren't in that event")
-        evt = await Database.select_event(event_id) 
+        evt = await Database.select_event(event_id)
         if evt is None:
             return await helpers.send(ctx,content="Event not found")
         if evt.event_type == "None":
@@ -294,18 +342,23 @@ class Events(commands.Cog):
 
         event_partecipants = await Database.select_event_partecipants(event_id)
 
-        event_teams:dict = dict()
+        event_teams = {}
         current_date = helpers.get_current_date_game()
         if evt.guildies_only:
-            guild_member = tuple(await SMMOApi.get_guild_members(evt.guild_id))
+            guild_member = tuple(await SMMOApi.get_guild_members(evt.igguild_id))
         author_team = ""
+        
+        bulk_stats1 = await Database.select_user_stat_bulk([p.smmo_id for p in event_partecipants],evt.start_year,evt.start_month,evt.start_day)
+        bulk_stats2 = await Database.select_user_stat_bulk([p.smmo_id for p in event_partecipants],current_date.year,current_date.month,current_date.day)
         for partecipant in event_partecipants:
             if partecipant.smmo_id == g_user.smmo_id:
                 author_team = str(partecipant.team)
-            user_stats = await Database.select_user_stat(partecipant.smmo_id,evt.start_year,evt.start_month,evt.start_day)
+                
+            user_stats = bulk_stats1[partecipant.smmo_id]
+
             if user_stats is None:
                 continue
-            start_day_stats = await Database.select_user_stat(partecipant.smmo_id,current_date.year,current_date.month,current_date.day)
+            start_day_stats = bulk_stats2[partecipant.smmo_id]
             if start_day_stats is None:
                 continue
             if evt.guildies_only:
@@ -381,75 +434,247 @@ class Events(commands.Cog):
         evt = await Database.select_event(event_id) 
         if evt is None:
             return await ctx.followup.send(content="Event not found")
-
-        starting_stats = await Database.select_user_stat(smmo_id,evt.start_year,evt.start_month,evt.start_day)
         
-        current_stats = await SMMOApi.get_player_info(smmo_id)
-        team = await Database.select_event_team(user_evt.team, evt.guild_id) 
-        team = team if team else []
-        team = [x for x in team if team.smmo_id != bot_user.smmo_id]
-        team_stats_current = [await SMMOApi.get_player_info(x.smmo_id) for x in team]
-        team_stats_starting = [await Database.select_user_stat(x.smmo_id,evt.start_year,evt.start_month,evt.start_day) for x in team]
+        start_datetime = datetime(evt.start_year,evt.start_month,evt.start_day,hour=12,tzinfo=timezone.utc)
+        ending_datetime = datetime(evt.end_year,evt.end_month,evt.end_day,hour=12,tzinfo=timezone.utc)
 
-        current_day = helpers.get_current_date_game()
-        ending_time = current_day.timestamp()
-        ended = False
-        if datetime(evt.end_year,evt.end_month,evt.end_day,12,tzinfo=timezone.utc) < current_day:
-            current_temp = await Database.select_user_stat(smmo_id,evt.end_year,evt.end_month,evt.end_day)
-            current_stats.steps = current_temp.steps
-            current_stats.npc_kills = current_temp.npc_kills
-            current_stats.user_kills = current_temp.user_kills
-            ending_time = datetime(evt.end_year,evt.end_month,evt.end_day,12,tzinfo=timezone.utc).timestamp()
-            for teammate in team_stats_current:
-                current_team_temp = await Database.select_user_stat(teammate.smmo_id,evt.end_year,evt.end_month,evt.end_day)
-                teammate.steps = current_team_temp.steps
-                teammate.npc_kills = current_team_temp.npc_kills
-                teammate.user_kills = current_team_temp.user_kills
-            ended = True
-        started = True
-        if datetime(evt.start_year,evt.start_month,evt.start_day,12,tzinfo=timezone.utc) > current_day:
-            started = False
-        if starting_stats is None:
-            score = 0
-            team_score = 0
-        else:
-            score = helpers.evaluate_formula(evt.event_type,
-                                                        current_stats.steps-starting_stats.steps,
-                                                        current_stats.npc_kills-starting_stats.npc_kills,
-                                                        current_stats.user_kills-starting_stats.user_kills
-                                                        )
-            team_score = sum(helpers.evaluate_formula(evt.event_type,
-                                                        x.steps-y.steps,
-                                                        x.npc_kills-y.npc_kills,
-                                                        x.user_kills-y.user_kills
-                                                        ) for x in team_stats_current for y in team_stats_starting if x.smmo_id == y.smmo_id)
-        emb = helpers.Embed(title=f"[{current_stats.name}]'s stats from {evt.name}",
-                                  description=f"**Timeframe**: {f"<t:{int(datetime(evt.start_year,evt.start_month,evt.start_day,12,tzinfo=timezone.utc).timestamp())}> - <t:{int(ending_time)}>" if started else "Not Started"}\n"
-                                              f"**Last updated**: <t:{int(datetime.now().timestamp())}:R>\n"
-                                              f"**Team**: '{user_evt.team if user_evt.team != "" else "No Team... Yet."}'",
-                                  url=f"https://simple-mmo.com/user/view/{current_stats.id}",
-                                  thumbnail=f"https://simple-mmo.com{current_stats.avatar}")
+        evt_mng = EventManager(evt)
+        event_teams = await evt_mng.get_partecipants_points(user_evt.team)
+
+        score = event_teams[user_evt.smmo_id]["stats"]+event_teams[user_evt.smmo_id]["extra"]
+        total_team_score = sum(x["stats"]+x["extra"] for x in event_teams.values() if x["player"].smmo_id != user_evt.smmo_id)
+        full_team_score = total_team_score+score
+
+        emb = helpers.Embed(
+            title=f"[{user_evt.name}]'s stats from {evt.name}",
+            description=f"**Timeframe**: <t:{int(start_datetime.timestamp())}> - <t:{int(ending_datetime.timestamp())}>\n"
+                        f"**Last updated**: <t:{int(datetime.now().timestamp())}:R>\n"
+                        f"**Team**: {user_evt.team or "No Team... Yet."}",
+            url=f"https://simple-mmo.com/user/view/{user_evt.smmo_id}",
+            #thumbnail=f"https://simple-mmo.com{current_stats.avatar}"
+        )
         emb.add_field(name="Your Score",
-                      value=f"{score:,} ({(score/max(team_score+score,1))*100:.2f}%)",
-                      inline=True
-                      )
+                        value=f"{score:,} ({(score/max(full_team_score,1))*100:.2f}%)",
+                        inline=True
+                        )
         emb.add_field(name="Team Score",
-                      value=f"{team_score:,}",
-                      inline=True
-                      )
+                        value=f"{total_team_score:,}",
+                        inline=True
+                        )
         
         emb.add_field(name="Total Score",
-                      value=f"{score+team_score:,}",
-                      inline=True
-                      )
+                        value=f"{full_team_score:,}",
+                        inline=True
+                        )
+                        
         emb.add_field(name="",value=f"Formula used in this event: `{evt.event_type.upper()}`",inline=False)
 
         if event_id is None:
             emb.add_field(name="Other Events You are in:",value="\n".join(f"[{x.id}] - {x.name}" for x,_ in zip(user_events,range(5))),inline=False)
 
-        if ended:
+        now = datetime.now(tz=timezone.utc)
+        if now > ending_datetime:
             emb.set_footer(text="*Event Ended*")
-        return await ctx.followup.send(embed=emb)
+        if start_datetime > now:
+            emb.set_footer(text="*Event Has To Start*")
+
+        return await helpers.send(ctx,embed=emb)
+
+
+    @subcommand("event")
+    @slash_command(description="Show your team's stats")
+    @guild_only()
+    @permissions.require_linked_account()
+    @command_utils.auto_defer(False)
+    @command_utils.statistics("/event stats_team")
+    @command_utils.took_too_long()
+    async def stats_team(self, ctx: ApplicationContext, event_id:int=None):
+        smmo_id = ctx.discord_user.smmo_id
+
+        user_events = tuple(await Database.select_event_user_partecipants(smmo_id))
+        if len(user_events)==0:
+            return await helpers.send(ctx,content="No Event Found")
+        elif event_id is None:
+            user_evt = user_events[0]
+            event_id = user_evt.event_id
+        else:
+            found = False
+            for evt in user_events:
+                if evt.event_id == event_id:
+                    user_evt = evt
+                    found = True
+                    break
+            if not found:
+                return await helpers.send(ctx,content="You aren't in that event")
+        evt = await Database.select_event(event_id) 
+        if evt is None:
+            return await ctx.followup.send(content="Event not found")
+        start_datetime = datetime(evt.start_year,evt.start_month,evt.start_day,hour=12,tzinfo=timezone.utc)
+        ending_datetime = datetime(evt.end_year,evt.end_month,evt.end_day,hour=12,tzinfo=timezone.utc)
+
+        evt_mng = EventManager(evt)
+        event_teams = await evt_mng.get_partecipants_points(user_evt.team)
+
+        score = event_teams[user_evt.smmo_id]["stats"]+event_teams[user_evt.smmo_id]["extra"]
+        total_team_score = sum(x["stats"]+x["extra"] for x in event_teams.values() if x["player"].smmo_id != user_evt.smmo_id)
+        full_team_score = total_team_score+score
+
+        emb = helpers.Embed(
+            title=f"[{user_evt.name}]'s stats from {evt.name}",
+            description=f"**Timeframe**: <t:{int(start_datetime.timestamp())}> - <t:{int(ending_datetime.timestamp())}>\n"
+                        f"**Last updated**: <t:{int(datetime.now().timestamp())}:R>\n"
+                        f"**Team**: {user_evt.team or "No Team... Yet."}",
+            url=f"https://simple-mmo.com/user/view/{user_evt.smmo_id}",
+            #thumbnail=f"https://simple-mmo.com{current_stats.avatar}"
+        )
+        emb.add_field(name="Your Score",
+                        value=f"{score:,} ({(score/max(full_team_score,1))*100:.2f}%)",
+                        inline=True
+                        )
+        emb.add_field(name="Team Score",
+                        value=f"{total_team_score:,}",
+                        inline=True
+                        )
+        
+        emb.add_field(name="Total Score",
+                        value=f"{full_team_score:,}",
+                        inline=True
+                        )
+                        
+        msg = ""
+        title = True
+        for x in sorted(event_teams.values(), key=lambda mbr: mbr["stats"]+mbr["extra"],reverse=True):
+            temp = f"{x["player"].name}: {x["stats"]+x["extra"]:,}{f" [{x["extra"]}]" if x["extra"]!=0 else ""} ({(x["stats"]/max(full_team_score,1))*100:.2f}%)\n"
+            if len(msg)+len(temp)<1024:
+                msg += temp
+            else:
+                emb.add_field(
+                    name="Team Info" if title else "",
+                    value=msg,
+                    inline=False
+                )
+                title = False
+                msg = ""
+        if msg != "":
+            emb.add_field(
+                    name="Team Info" if title else "",
+                    value=msg,
+                    inline=False
+            )
+        emb.add_field(name="",value=f"Formula used in this event: `{evt.event_type.upper()}`",inline=False)
+
+        if event_id is None:
+            emb.add_field(name="Other Events You are in:",value="\n".join(f"[{x.id}] - {x.name}" for x,_ in zip(user_events,range(5))),inline=False)
+
+        now = datetime.now(tz=timezone.utc)
+        if now > ending_datetime:
+            emb.set_footer(text="*Event Ended*")
+        if start_datetime > now:
+            emb.set_footer(text="*Event Has To Start*")
+
+        return await helpers.send(ctx,embed=emb)
+    
+    @subcommand("event")
+    @slash_command(description="Show your event overall")
+    @guild_only()
+    @permissions.require_linked_account()
+    @command_utils.auto_defer(False)
+    @command_utils.statistics("/event overall")
+    @command_utils.took_too_long()
+    async def overall(self, ctx: ApplicationContext, user:Member=None, smmo_id:int = None, event_id:int=None):
+        if user is not None:
+            u_id = user.id
+        else:
+            u_id = ctx.user.id
+        bot_user = await Database.select_user_discord(u_id)
+        if bot_user is None:
+            return await ctx.followup.send("User not linked.")
+        smmo_id = bot_user.smmo_id if smmo_id is None else smmo_id
+
+        is_empty,user_events = helpers.gen_is_empty(await Database.select_event_user_partecipants(smmo_id))
+        if is_empty:
+            return await helpers.send(ctx,content="No Event Found")
+        elif event_id is None:
+            user_evt = next(user_events)
+            event_id = user_evt.event_id
+        else:
+            found = False
+            for evt in user_events:
+                if evt.event_id == event_id:
+                    user_evt = evt
+                    found = True
+                    break
+            if not found:
+                return await helpers.send(ctx,content="You aren't in that event")
+        evt = await Database.select_event(event_id) 
+        if evt is None:
+            return await ctx.followup.send(content="Event not found")
+        
+        emb = helpers.Embed(
+            title=f"[{user_evt.name}]'s overall from {evt.name}",
+            description=f"**Last updated**: <t:{int(datetime.now().timestamp())}:R>\nEvent formula: `{evt.event_type.upper()}`",
+            url=f"https://simple-mmo.com/user/view/{smmo_id}"
+        )
+
+        start_datetime = datetime(evt.start_year,evt.start_month,evt.start_day,hour=12,tzinfo=timezone.utc)
+        ending_datetime = datetime(evt.end_year,evt.end_month,evt.end_day,hour=12,tzinfo=timezone.utc)
+        
+        starting_stats = await Database.select_user_stat(smmo_id,start_datetime.year,start_datetime.month,start_datetime.day)
+        ending_stats = await Database.select_user_stat(smmo_id,ending_datetime.year,ending_datetime.month,ending_datetime.day)
+
+
+        day_count = (ending_datetime - start_datetime).days
+        msg = ""
+        temp_stats = starting_stats
+        temp_point = None
+        _exit = False
+        for i,single_date in enumerate((start_datetime + timedelta(n) for n in range(1,day_count))):
+            if day_count == i:
+                day_stats = ending_stats
+            else:
+                day_stats = await Database.select_user_stat(smmo_id,single_date.year,single_date.month,single_date.day)
+            
+            if not _exit and day_stats is None:
+                day_stats = await SMMOApi.get_player_info(smmo_id)
+                _exit = True
+
+            steps = day_stats.steps - starting_stats.steps
+            npc = day_stats.npc_kills - starting_stats.npc_kills
+            pvp = day_stats.user_kills - starting_stats.user_kills
+
+            points = helpers.evaluate_formula(evt.event_type,steps,npc,pvp)
+            
+            steps = day_stats.steps - temp_stats.steps
+            npc = day_stats.npc_kills - temp_stats.npc_kills
+            pvp = day_stats.user_kills - temp_stats.user_kills
+
+            if not _exit:
+                temp = (
+                    f"- Day {i+1} (<t:{int(single_date.timestamp())}:d>):\n"
+                    f"> NPC: {npc:,}\n"
+                    f"> PVP: {pvp:,}\n"
+                    f"> STEPS: {steps:,}\n"
+                    f"> ---------------\n"
+                    f"> Points: {points:,}{f" (+{points-temp_point:,})" if temp_point is not None else ""}\n"
+                )
+            else:
+                temp = f"- Day {i} (<t:{int(single_date.timestamp())}:d>):\n"
+            if len(msg)+len(temp) < 1024:
+                msg += temp
+            else:
+                emb.add_field(name="",value=msg,inline=False)
+                msg = temp
+            if _exit:
+                continue
+            temp_point = points
+            temp_stats = day_stats
+        
+        if msg != "":
+            emb.add_field(name="",value=msg,inline=False)
+        
+        await helpers.send(ctx,embed=emb)
+
+
 
 def setup(client:Bot):
     client.add_cog(Events(client))

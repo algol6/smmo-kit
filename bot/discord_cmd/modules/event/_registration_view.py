@@ -88,8 +88,8 @@ class RegistrationView(discord.ui.View):
         if len(self.message.embeds) != 0:
             self.name = self.message.embeds[0].title
             self.desc = self.message.embeds[0].description
-            self.custom_image = self.message.embeds[0].image.url
-            self.custom_thumbnail = self.message.embeds[0].thumbnail.url
+            self.custom_image = self.message.embeds[0].image.url if self.message.embeds[0].image else ""
+            self.custom_thumbnail = self.message.embeds[0].thumbnail.url if self.message.embeds[0].thumbnail else ""
             self.author_name = self.message.embeds[0].author.name
             self.author_icon = self.message.embeds[0].author.icon_url
             self.template = self.parse_values_npart(self.message.embeds[0].fields[1].value)

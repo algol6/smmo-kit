@@ -59,42 +59,33 @@ class ParticipantsView(discord.ui.View):
     
 
     async def create_embed(self, data):
-        emb = helpers.Embed(title=f"Event Participants:",description=f"Event ID: {self.evt.id}\nParticipants: {self.np}")                                                                                          
+        emb = helpers.Embed(title=f"Event Participants:",description=f"Event ID: {self.evt.id}\nParticipants: {len(self.event_participants)}")                                                                                          
         #   {"player":partecipant,"stats": curr_stats, "gains": curr_stats-today_stats}
+        msg = ""
         if self.team_size == 1:
-            for team in data:
-                msg = ""
-                if team[0] == "":
-                    for i,teammate in enumerate(team[1],start=1):
-                        msg += f"No Team - [{teammate.name}](https://simple-mmo.com/user/view/{teammate.smmo_id})\n"
-                        if i % 5 == 0:
-                            emb.add_field(name="",
-                            value=msg,
-                            inline=False)
-                            msg = ""
-                    if msg != "":
-                        emb.add_field(name="",
-                            value=msg,
-                            inline=False)
-                    continue
-                msg += f"Team '{team[0]}' - [{team[1][0].name}](https://simple-mmo.com/user/view/{team[1][0].smmo_id})"
+            for i,team in enumerate(data,1):
+                msg += f"Team '{team.team or "No Team"}' - [{team.name}](https://simple-mmo.com/user/view/{team.smmo_id})"
+                if i%5==0:
+                    emb.add_field(name="",
+                        value=msg,
+                        inline=False)
+                    msg = ""
+            if msg!="":
                 emb.add_field(name="",
                             value=msg,
                             inline=False)
-                msg = ""
         else:
-            for team in data:
-                msg = ""
-                for teammate in team[1]:
-                    msg += f"- [{teammate.name}](https://simple-mmo.com/user/view/{teammate.smmo_id})\n"
-                    if len(msg) >= 1024:
-                        msg = ""
-                        msg += f"- {teammate.name}\n"
-
-                emb.add_field(name=f"Team '{team[0]}'",
+            for i,team in enumerate(data,1):
+                msg += f"- Team {team.team or "No Team"} - [{team.name}](https://simple-mmo.com/user/view/{team.smmo_id})\n"
+                if i%5==0:
+                    emb.add_field(name="",
+                        value=msg,
+                        inline=False)
+                    msg = ""
+            if msg!="":
+                emb.add_field(name="",
                             value=msg,
                             inline=False)
-                msg = ""
         #emb.add_field(name="", value="\n".join([f"## **#{i}** - Team: {v[0]}\n   [{v["name"]}](https://simple-mmo.com/user/view/{v["id"]}): {format(v["stats"],",d")}" for v,i in zip(data,range(from_item + 1, until_item + 1))]))
 
         emb.set_footer(text=f"Page {self.current_page}/{(len(self.event_participants)) // self.sep + 1}")

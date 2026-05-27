@@ -6,6 +6,7 @@ from bot.api import SMMOApi,ApiError
 from bot.database import Database
 from bot.discord_cmd.helpers import permissions, command_utils, helpers
 from bot.discord_cmd.helpers.logger import logger
+from bot.core._event import EventManager
 
 from random import shuffle
 from collections import Counter, defaultdict
@@ -38,7 +39,7 @@ class EventTasks(Cog):
                 continue
             for partecipant in participants:
                 try:
-                    chn.send(f"<@{partecipant.discord_id}> Event '{e.name}' Started, Go and earn your prize",delete_after=1,silent=True)
+                    await chn.send(f"<@{partecipant.discord_id}> Event '{e.name}' Started, Go and earn your prize",delete_after=1,silent=True)
                 except Exception as e:
                     logger.exception("Sending not event start")
                     continue
@@ -51,6 +52,7 @@ class EventTasks(Cog):
         for evt in event:
             if evt.start_time >= dt or evt.end_time < dt:
                 continue
+            return
             partecipants = list(await Database.select_event_partecipants(evt.id))
             shuffle(partecipants)
             count = Counter(x.team for x in partecipants)
@@ -66,7 +68,7 @@ class EventTasks(Cog):
                     break
 
 
-    @loop(hours=1)
+    @loop(minutes=10)
     async def update_leaderboard(self):
         data = tuple(await Database.select_all_event_lb())
         curr_timestamp = int(datetime.now().timestamp())
@@ -75,14 +77,13 @@ class EventTasks(Cog):
             for d in data:
                 if e.id != d.event_id:
                     continue
-                if e.start_time > curr_timestamp > e.end_time:
+                if curr_timestamp < e.start_time or curr_timestamp > e.end_time:
                     continue
                 emb = await self.make_embed(e)
                 emb.set_thumbnail(url=e.thumbnail)
                 await helpers.get_channel_and_edit(self.client,d.channel_id,d.message_id,embed=emb)
 
 
-    @loop(minutes=15)
     async def register_partecipants(self):
         #unused
         events = await Database.select_all_events(datetime.now().timestamp())
@@ -99,7 +100,6 @@ class EventTasks(Cog):
                         discord_users.add(user)
             except Exception as e:
                 logger.exception("REGISTER PARTECIPANTS")
-                print(e)
                 continue
             guildy = None
             if evt.guildies_only:
@@ -116,8 +116,64 @@ class EventTasks(Cog):
                 await Database.insert_event_partecipant(g_user.smmo_id,u.name,g_user.discord_id,evt.id,"")
 
 
+
     @staticmethod
     async def make_embed(event) -> helpers.Embed:
+        evt_mng = EventManager(event)
+        event_teams = await evt_mng.get_partecipants_points()
+        if event_teams is None or len(event_teams)  == 0:
+            return helpers.Embed(title="No Data")
+
+        emb = helpers.Embed(
+            title=f"{event.name}'s Leaderboard",
+            description=f"Last Update: <t:{int(datetime.now().timestamp())}:R>"
+        )
+
+        event_lb = []
+        for team,mbrs in event_teams.items():
+            event_lb.append((
+                team,
+                sum(mbr["stats"] for mbr in mbrs.values()),
+                sorted(mbrs.values(),key=lambda sts: sts["stats"],reverse=True)
+            ))
+        event_lb = sorted(event_lb,key=lambda sts: sts[1], reverse=True)[:10]
+        
+        for i,v in enumerate(event_lb,start=1):
+            need_title = True
+            msg = ""
+            if event.team_size == 1:
+                title = ""
+                temp += f"#{i} - {v[2][0].name}: {v[1]:,}"
+                if len(msg)+len(temp)<1024:
+                        msg += temp
+                else:
+                    emb.add_field(name=title if need_title else "",
+                                value=msg,
+                                inline=False)
+                    need_title = False
+                    msg = temp
+            else:
+                title = f"#{i} - Team '{v[0] or "No Team"}': {v[1]:,}\n"
+                for u in v[2]:
+                    temp = f"> {u["player"].name}: {u["stats"]:,}{f" [+{u["extra"]:,}]" if u["extra"] != 0 else ""}\n"
+                    
+                    if len(msg)+len(temp)<1024:
+                        msg += temp
+                    else:
+                        emb.add_field(name=title if need_title else "",
+                                    value=msg,
+                                    inline=False)
+                        need_title = False
+                        msg = temp
+            if msg != "":
+                emb.add_field(name=title if need_title else "",
+                            value=msg,
+                            inline=False)
+        emb.set_footer(text=f"Updated every 10m")
+        return emb
+
+    @staticmethod
+    async def make_embed_old(event) -> helpers.Embed:
         event_partecipants = await Database.select_event_partecipants(event.id)
         event_teams:dict = dict()
         current_date = helpers.get_current_date_game()
@@ -169,20 +225,37 @@ class EventTasks(Cog):
             event_lb.append((
                 team,
                 sum(mbr["stats"] for mbr in mbrs),
-                [mbr["player"] for mbr in mbrs]
+                [mbr["player"] for mbr in sorted(mbrs,key=lambda sts: sts["stats"],reverse=True)]
             ))
         event_lb = sorted(event_lb,key=lambda sts: sts[1], reverse=True)[:10]
         
         for i,v in enumerate(event_lb,start=1):
             if event.team_size == 1:
-                msg = f"#{i} - {v[2][0].name}: {v[1]:,}"
+                title = f"#{i} - {v[2][0].name}: {v[1]:,}"
             else:
-                msg = f"#{i} - Team '{v[0]}': {v[1]:,}"
-            emb.add_field(name="",
-                          value=msg,
-                          inline=False)
-        emb.set_footer(text=f"Updated every hour")
+                title = f"#{i} - Team '{v[0] or "No Team"}': {v[1]:,}\n"
+                need_title = True
+                msg = ""
+                for u in v[2]:
+                    for val in event_teams.values():
+                        for x in val:
+                            if x["player"].smmo_id != u.smmo_id:
+                                continue
+                            if len(msg)<1024:
+                                msg += f"> {u.name}: {x["stats"]:,}\n"
+                            else:
+                                emb.add_field(name=title if need_title else "",
+                                            value=msg,
+                                            inline=False)
+                                need_title = False
+                                msg = ""
+                            break
+            emb.add_field(name=title if need_title else "",
+                        value=msg,
+                        inline=False)
+        emb.set_footer(text=f"Updated every 10m")
         
         return emb
         
                 
+
