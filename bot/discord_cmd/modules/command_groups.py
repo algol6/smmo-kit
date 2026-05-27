@@ -12,8 +12,7 @@ class CommandGroups(commands.Cog):
     worldboss_subgroup = group_admin.create_subgroup("worldboss")
     event_subgroup = group_admin.create_subgroup("event")
     market_subgroup = group_admin.create_subgroup("market")
-    quest_subgroup = group_admin.create_subgroup("quest")
-    
+
     group_user = SlashCommandGroup(name="user", description="Users commands")
 
     group_guild = SlashCommandGroup(name="guild", description="Guilds commands")
@@ -28,9 +27,7 @@ class CommandGroups(commands.Cog):
 
     group_event = SlashCommandGroup(name="event", description="Events public commands")
 
-    group_market = SlashCommandGroup(name="market", description="Player Market")
-
-    group_quest = SlashCommandGroup(name="quest", description="Guild Quest")
+    group_market = SlashCommandGroup(name="market", description="Market public commands")
 
     def __init__(self, client):
         self.client = client
