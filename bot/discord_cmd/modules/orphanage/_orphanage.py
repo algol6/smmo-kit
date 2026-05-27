@@ -30,7 +30,7 @@ class Orphanage(commands.Cog):
             ch = await self.client.fetch_channel(channel.id)
             await ch.send(content="test message.", delete_after=1)
         except Forbidden:
-            return await helpers.send(ctx,ontent="Bot doesn't have the perms to see/write the channel.")
+            return await helpers.send(ctx,content="Bot doesn't have the perms to see/write the channel.")
         match tier:
             case "Tier 1":
                 t = 1

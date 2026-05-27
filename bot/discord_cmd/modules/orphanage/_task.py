@@ -31,7 +31,7 @@ class OrphanageTask(commands.Cog):
         if orphanage_data[2].has_expired:
             self.check_orphanage.stop()
         
-        orphanage_db = await Database.select_orphanage()
+        orphanage_db = tuple(await Database.select_orphanage())
         emb = None
         channels_id = set()
         TEMPLATES:str = ["[{bar}] {percentage}%\nGold :coin::\n> {x:,}/{y:,}\nStatus :repeat::\n> {status}\n",
@@ -41,10 +41,12 @@ class OrphanageTask(commands.Cog):
         for tier_data in orphanage_data:
             tier = OrphanageTask.parse_orphanage_key_tier(tier_data.tier.key)
             for notification_config in orphanage_db:
+                if notification_config.tier != int(tier):
+                    continue
                 if emb is None:
                     emb = helpers.Embed(title=f"Orphanage Status",
                                 url="https://simple-mmo.com/orphanage",
-                                thumbnail="https://simple-mmo.com/img/icons/orphanage.png",
+                                thumbnail="https://simple-mmo.com/img/icons/one/icon427.png",
                                 color= 0xffd700)
                     for i in range(3):
                         if not progression:
@@ -86,8 +88,7 @@ class OrphanageTask(commands.Cog):
                                                                 channel_id=notification_config.channel_id,
                                                                 message_id=notification_config.message_id,
                                                                 embed=emb)
-                if notification_config.tier != int(tier):
-                    continue
+                
                 if notification_config.active != 1 and tier_data.is_active:
                     await helpers.get_channel_and_edit(self.client,
                                                         notification_config.channel_id,
