@@ -11,3 +11,5 @@ log/
 .env
 
 todo
+
+run.py
