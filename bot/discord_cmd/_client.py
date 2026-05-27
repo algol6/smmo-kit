@@ -4,12 +4,13 @@ from discord import (
     Activity,
     ApplicationContext,
     DiscordException,
-    errors
+    errors,
+    SlashCommandGroup, SlashCommand
 )
 from os import getenv
 from pycord.multicog import Bot
-from bot.database import Database
-from bot.discord_cmd.helpers import helpers
+from bot.database import Database, TrialDatabase
+from bot.discord_cmd.helpers import helpers,command_utils,permissions
 from bot.discord_cmd.helpers.logger import logger
 from bot.api._api import ApiError
 
@@ -30,8 +31,16 @@ client.load_extension("bot.discord_cmd.modules.utility")
 client.load_extension("bot.discord_cmd.modules.worldboss")
 client.load_extension("bot.discord_cmd.modules.extra")
 client.load_extension("bot.discord_cmd.modules.community")
-#client.load_extension("bot.discord_cmd.modules.trial")
+client.load_extension("bot.discord_cmd.modules.trial")
 
+
+@command_utils.auto_defer()
+@permissions.require_owner()
+@command_utils.took_too_long()
+async def test(ctx:ApplicationContext):
+    return
+
+    
 
 @client.event
 async def on_application_command_error(ctx: ApplicationContext, error: DiscordException):
@@ -41,27 +50,82 @@ async def on_application_command_error(ctx: ApplicationContext, error: DiscordEx
             guild = f"[{ctx.guild.name} #{ctx.channel.name}]"
         except:
             guild = f"[{ctx.guild.name} #{ctx.channel}]"
-
     logger.error("COMMAND [/%s] from %s:\n%s",ctx.command.qualified_name,guild,error)
-    if isinstance(error, errors.NotFound):
+    if isinstance(error.original, errors.NotFound):
         logger.warning("Error 'discord.errors.NotFound'")
         return await helpers.send(ctx,content=f"Error with discord, Try again.")
-    elif isinstance(error,ApiError):
+    elif isinstance(error.original,ApiError):
+        return await helpers.send(ctx,content=f"Error caused by: Api Limit Hit :/")
+    elif isinstance(error.original,HTTPError):
         return await helpers.send(ctx,content=f"Error caused by: {error}")
-    elif isinstance(error,HTTPError):
-        return await helpers.send(ctx,content=f"Error caused by: {error}")
-    await helpers.send(ctx,"Unexpected error. Try again later.",delete_after=3600)
+    await helpers.send(ctx,"Unexpected error. Try again later.",delete_after=300)
 
 @client.event
 async def on_ready():
+    print("BOT READY")
     from bot.discord_cmd.modules.event._registration_view import RegistrationView
+    from bot.discord_cmd.modules.trial._entry_view import EntryView
     client.add_view(RegistrationView())
+    client.add_view(EntryView())
+    server_setting = await TrialDatabase.select_trial_x_settings()
+    print("Loading custom trial commands...")
+    from bot.discord_cmd.modules.trial._trial import Trial
+    try:
+        await Trial.generate_trial_tree(client,server_setting)
+    except errors.HTTPException:
+        pass
+    print("Loading custom trial commands DONE.")
+    return
+    print("Loading Test")
+    main_group = SlashCommandGroup(
+                name="test",
+                description=f"Test command",
+                guild_ids=[1319980713541505044]
+            )
+            
+    main_group.add_command(SlashCommand(
+        func=test, 
+        name="test", 
+        description="test function",
+        parent=main_group
+    ))
+    client.add_application_command(main_group)
+    await client.sync_commands()
+    print("Test loaded")
+
+
+@client.event
+async def on_guild_join(guild):
+    channel = guild.system_channel
+    
+    if not channel:
+        for text_channel in guild.text_channels:
+            if text_channel.permissions_for(guild.me).send_messages:
+                channel = text_channel
+                break
+
+    if channel:
+        emb = helpers.Embed(
+            title="Hello, I'm SMMO-Kit!",
+            description="Thanks for adding me to your server!"
+        )
+        emb.add_field(
+            name="Getting Started",
+            value=(
+                f"Type `/user verify` to verify your account!\n"
+                f"Then you can link the server to a guild with `/admin link server`"
+            )
+        )
+        emb.set_footer(text="Developed by Algol")
+        
+        await channel.send(embed=emb)
 
 @client.event
 async def on_member_join(member):
     conf = await Database.select_join_roles(member.guild.id)
     if conf is None:
         return
+    channel = None
     if conf.msg != "":
         try:
             channel = await client.get_channel(conf.channel)
@@ -71,16 +135,18 @@ async def on_member_join(member):
     player = await helpers.get_user(user=member)
     if player is None:
         try:
-            msg = await channel.send(content="> To automatically get roles link with the bot using '/user verify' and following the instructions or ask to the moderators.",delete_after=500)
-            return
+            if channel is None:
+                channel = await client.get_channel(conf.channel)
+            msg = await channel.send(content="> To automatically get roles link with the bot using '/user verify' and following the instructions or ask to the moderators.",delete_after=120)
         except:
             pass
+        return
     guild_id = await Database.select_server(member.guild.id)
     if guild_id == player.guild.id:
         await helpers.give_join_roles(member,conf.groles)
     else:
         await helpers.give_join_roles(member,conf.vroles)
-    
+     
 def main():
     try:
         logger.info("Starting Bot. Goodmorning!")
