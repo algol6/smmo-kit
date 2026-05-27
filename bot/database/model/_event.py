@@ -56,3 +56,4 @@ class EventPartecipants:
     discord_id: int
     event_id: int
     team: str
+    points: int
