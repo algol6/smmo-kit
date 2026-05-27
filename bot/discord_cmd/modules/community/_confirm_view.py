@@ -4,7 +4,7 @@ from bot.discord_cmd.helpers import helpers
 from bot.discord_cmd.helpers.logger import logger
 
 class ConfirmButton(discord.ui.View):
-    SELLING_TEMPLATE: str = "{description}\n**Price**: {price}\n[DM User In Game](https://web.simple-mmo.com/chat/private?user_id={smmo_id})\nListed: <t:{timestamp}:R>"
+    SELLING_TEMPLATE: str = "{description}\n**Price**: {price}\n[DM In Game](https://web.simple-mmo.com/chat/private?user_id={smmo_id})\nListed: <t:{timestamp}:R>"
 
     async def send(self, ctx: discord.ApplicationContext):
         self.emb = helpers.Embed(title="Do you want to get the old Items?", 

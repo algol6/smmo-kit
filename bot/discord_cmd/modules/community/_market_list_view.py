@@ -32,7 +32,7 @@ class MarketListView(discord.ui.View):
             "https://simple-mmo.com/img/icons/S_Ice06.png",
             "https://simple-mmo.com/img/icons/I_Chest01.png"
         )
-        self.SELLING_TEMPLATE: str = "**Seller**: {name}\n{description}\n**Price**: {price}\n[DM User In Game](https://web.simple-mmo.com/chat/private?user_id={smmo_id})\nListed: <t:{timestamp}:R>"
+        self.SELLING_TEMPLATE: str = "**Seller**: {name}\n{description}\n**Price**: {price}\n[DM In Game](https://web.simple-mmo.com/chat/private?user_id={smmo_id})\nListed: <t:{timestamp}:R>"
 
     async def send(self, ctx: discord.ApplicationContext):
         await ctx.followup.send(view=self)

@@ -17,6 +17,9 @@ class MyListView(discord.ui.View):
         await self.update_message(self.get_current_page_data())
 
     async def update_message(self, data):
+        if self.current_page == len(self.data):
+            self.current_page -= 1
+
         await self.update_buttons()
         await self.message.edit(embed=await self.create_embed(data), view=self)
             
@@ -40,8 +43,6 @@ class MyListView(discord.ui.View):
     def get_current_page_data(self):
         if len(self.data) == 0:
             return None
-        if self.current_page == len(self.data):
-            self.current_page -= 1
         return self.data[self.current_page]
 
     async def create_embed(self, data):
@@ -53,7 +54,10 @@ class MyListView(discord.ui.View):
         emb:helpers.Embed = helpers.Embed(
             title=f"{data.author_name}'s Shop"
         )
-        price = f"{data.price:,}" if helpers.is_number(data.price) else data.price
+        try:
+            price = f"{int(data.price):,}" 
+        except:
+            price = data.price
         emb.add_field(
             name=data.title,
             value=self.SELLING_TEMPLATE.format(description=data.description,price=price,timestamp=data.time),
@@ -83,6 +87,7 @@ class MyListView(discord.ui.View):
         if interaction.user.id != self.ctx.user.id:
             return await interaction.response.send_message(content="You don't have permission to press this button.", ephemeral=True)
         await interaction.response.defer()
+        self.current_page = 0
         item_id = self.data[self.current_page].id
         await Database.delete_market_item(item_id)
         message_notice = await Database.select_market_notice_item(item_id)
@@ -97,6 +102,6 @@ class MyListView(discord.ui.View):
     @discord.ui.button(label="Close", style=discord.ButtonStyle.blurple)
     async def close_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         await interaction.response.defer()
-        await self.message.delete(delay=5)
-        await interaction.followup.send("Deleting message...")
+        await self.message.delete(delay=3)
+        await interaction.followup.send("Deleting message...",delete_after=3)
     

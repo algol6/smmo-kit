@@ -30,7 +30,7 @@ class ItemModal(discord.ui.Modal):
 
     async def update_market_items(self,item):
         cat = ("Weapons","Armour","Items","Pets","Amulets","Shields","Boots","Helmets","Collectables","Avatars","Materials","Sprites","Greaves","Gaunlets","Backgrounds","Specials","Tools","Potions","Event Materials","Pleb","Misc")
-        SELLING_TEMPLATE: str = "{description}\n**Price**: {price}\n[DM User In Game](https://web.simple-mmo.com/chat/private?user_id={smmo_id})\nListed: <t:{timestamp}:R>"
+        SELLING_TEMPLATE: str = "{description}\n**Price**: {price}\n[DM In Game](https://web.simple-mmo.com/chat/private?user_id={smmo_id})\nListed: <t:{timestamp}:R>"
         emb:helpers.Embed = helpers.Embed(
             title=f"{item.author_name} is selling!",
             url=f"https://simple-mmo.com/user/view/{item.author_smmo_id}"
