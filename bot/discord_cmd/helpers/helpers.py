@@ -236,7 +236,10 @@ async def make_members_lb(g_id,lb_date,current_date,task:bool=False,reverse:bool
             m1 = await Database.select_user_stat(m2.user_id,current_date.year,current_date.month,current_date.day)
         if m1 is not None:
             if not live_stats:
-                m_stats = m2_stats[m2.user_id]
+                if m2.user_id in m2_stats:
+                    m_stats = m2_stats[m2.user_id]
+                else:
+                    m_stats = await Database.select_user_stat(m2.user_id,current_date.year,current_date.month,current_date.day)
                 if m_stats is not None:
                     m2.level = m_stats.level
                     m2.steps = m_stats.steps
