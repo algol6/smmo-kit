@@ -68,7 +68,8 @@ class AcceptTaskView(discord.ui.View):
         await interaction.response.defer()
 
         selected_value = self.category_select.values[0]
-
+        if selected_value is None:
+            return
         for option in self.category_select.options:
             option.default = option.value == selected_value
 
