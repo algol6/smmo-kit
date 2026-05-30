@@ -10,7 +10,7 @@ from bot.discord_cmd.helpers.logger import logger
 from datetime import timedelta,datetime
 
 from time import strftime, gmtime
-from math import ceil, isqrt
+from math import ceil, isqrt, floor
 from re import findall
 
 class Utility(commands.Cog):
@@ -146,93 +146,20 @@ class Utility(commands.Cog):
             player.level = starting_level
             player.exp = (50 * (player.level-1 * (player.level))//2)
 
-        xp_to_level_up  =  ((50 * (player.level * (player.level+1))//2)) - player.exp
-
         if target_level and player.level >= target_level:
             return await helpers.send(ctx,"The level that you want reach has to be higher than your actual level. -_-")
 
-        money_needed:int = 0
         npc_to_kill:int = 0
-        final_level = player.level
         final_xp_mult = BASE_XP_MULT * TIER_MULT * (1 + (boost_percentage / 100))
-
-        ##
-        if True:
-            final_xp_mult = int(BASE_XP_MULT * TIER_MULT * (1 + (boost_percentage / 100.0)))
         
-            level = player.level
-            xp_to_next = int(((50 * level * (level + 1)) // 2) - player.exp)
-            
-            money_needed = 0
-            kills = 0
-            temp_xp = 0
-            
-            while (npc > 0 and kills < npc) or (npc == 0 and level < target_level):
-                max_kills_allowed = npc - kills if npc > 0 else float('inf')
-                
-                # Guard against Level 0 zeroing out all progression
-                gain_per_kill = final_xp_mult * max(1, level) 
-                
-                if gain_per_kill <= 0:
-                    break
-                    
-                needed_xp = xp_to_next - temp_xp
-                
-                if needed_xp > 0:
-                    # Integer ceiling division: (a + b - 1) // b
-                    # Prevents IEEE-754 float underflow to 0.0 on massive divisors
-                    kills_req = (needed_xp + gain_per_kill - 1) // gain_per_kill
-                    kills_to_process = int(min(max_kills_allowed, kills_req))
-                else:
-                    kills_to_process = int(min(max_kills_allowed, 1))
-                    
-                if kills_to_process <= 0:
-                    break
-                    
-                temp_xp += kills_to_process * gain_per_kill
-                money_needed += kills_to_process * NPC_COST
-                kills += kills_to_process
+        level = player.level
+        current_xp = player.exp
+        xp_for_current_level = (50 * (player.level-1 * (player.level))//2)
+        level_progress = (current_xp / xp_for_current_level) if xp_for_current_level != 0 else 0
+        money_needed = 0
+        kzd + level
 
-                if temp_xp >= xp_to_next:
-                    temp_xp -= xp_to_next
-                    level += 1
-                    
-                    if temp_xp >= 50 * level:
-                        b = 25 * (2 * level - 1)
-                        discriminant = b**2 + 100 * temp_xp
-                        k = (-b + isqrt(discriminant)) // 50
-                        
-                        if k > 0:
-                            consumed_xp = 25 * k * (2 * level + k - 1)
-                            temp_xp -= consumed_xp
-                            level += k
-                            
-                    xp_to_next = level * 50
-
-            npc_to_kill = kills
-            final_level = level
-        ##
-        if False:
-            temp = 0
-            while (npc > 0 and npc_to_kill < npc) or (npc == 0 and final_level < target_level):
-                max_kills_allowed = npc - npc_to_kill if npc > 0 else 10_000_000
-                xp_x_kill = final_xp_mult * final_level
-                needed_xp = xp_to_level_up - temp
-                if needed_xp > 0:
-                    kills_req = (needed_xp + xp_x_kill - 1) // xp_x_kill
-                    kills_to_process = int(min(max_kills_allowed, kills_req))
-                else:
-                    kills_to_process = int(min(max_kills_allowed, 1))
-                if kills_to_process <= 0:
-                    break
-                temp += xp_x_kill * kills_to_process
-                money_needed += NPC_COST * kills_to_process
-                npc_to_kill += kills_to_process
-                while temp >= xp_to_level_up:
-                    temp -= xp_to_level_up
-                    final_level += 1
-                    xp_to_level_up += 50
-        
+        money_needed = npc_to_kill * NPC_COST    
         lvl_gained = final_level - player.level
 
         regen_time:str = helpers.formattime(npc_to_kill*5)
