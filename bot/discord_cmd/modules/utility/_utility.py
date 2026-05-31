@@ -153,11 +153,21 @@ class Utility(commands.Cog):
         final_xp_mult = BASE_XP_MULT * TIER_MULT * (1 + (boost_percentage / 100))
         
         level = player.level
-        current_xp = player.exp
         xp_for_current_level = (50 * (player.level-1 * (player.level))//2)
-        level_progress = (current_xp / xp_for_current_level) if xp_for_current_level != 0 else 0
-        money_needed = 0
-        kzd + level
+        level_progress = (player.exp / xp_for_current_level) if xp_for_current_level != 0 else 0
+        k_x_l = final_xp_mult / 50.0 
+
+        if npc == 0:
+            lvl_needed = (target_level - level) - level_progress
+            lvl_needed = max(0, lvl_needed) 
+            npc_to_kill = ceil(lvl_needed / k_x_l)
+            final_level = target_level
+        else:
+            npc_to_kill = npc
+            total_progress = level_progress + (npc_to_kill * k_x_l)
+            lvl_gained = floor(total_progress)
+            final_level = level + lvl_gained
+            
 
         money_needed = npc_to_kill * NPC_COST    
         lvl_gained = final_level - player.level
