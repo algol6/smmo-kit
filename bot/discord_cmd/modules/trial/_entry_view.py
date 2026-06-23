@@ -32,7 +32,6 @@ class EntryView(discord.ui.View):
         await self.message.edit(embed=await self.create_embed(), view=self)
 
     async def create_embed(self):
-        print("GENERATING EMB ENTRY VIEW")
         try:
             emb = await generate_info_emb(self.tm.trial.server_id)
         except AttributeError:

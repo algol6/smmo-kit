@@ -47,7 +47,7 @@ class CancelTaskButton(discord.ui.View):
         self.trial_mgr.records[self.rec_id].current_levels = self.player.level
         self.trial_mgr.records[self.rec_id].update_time = self.timestamp
         self.trial_mgr.records[self.rec_id].cancelled = True
-        await self.trial_mgr.update("record",self.trial_mgr.records[self.rec_id],False)
+        await self.trial_mgr.update("record",self.trial_mgr.records[self.rec_id],True)
         await interaction.response.edit_message(embed=helpers.Embed(title=f"{helpers.make_title(self.trial_mgr.trial.name)} cancelled."))
         
     
