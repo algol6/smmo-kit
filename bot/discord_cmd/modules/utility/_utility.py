@@ -64,7 +64,7 @@ class Utility(commands.Cog):
             if v.code != vault.code:
                 try:
                     channel = await self.client.get_or_fetch(TextChannel,v.channel_id)
-                    message = await channel.fetch_message(v.message_id)
+                    msg = await channel.fetch_message(v.message_id)
                     if isinstance(msg,bool):
                         continue
                     await Database.update_valutmsg(1,v.channel_id,vault.code,msg.id)
