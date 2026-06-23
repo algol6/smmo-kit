@@ -5,7 +5,8 @@ from discord import (
     ApplicationContext,
     DiscordException,
     errors,
-    SlashCommandGroup, SlashCommand
+    SlashCommandGroup, SlashCommand,
+    Forbidden
 )
 from os import getenv
 from pycord.multicog import Bot
@@ -15,6 +16,7 @@ from bot.discord_cmd.helpers.logger import logger
 from bot.api._api import ApiError
 
 from requests import HTTPError
+import re
 
 intent = Intents.default()
 intent.members = True
@@ -40,22 +42,20 @@ client.load_extension("bot.discord_cmd.modules.trial")
 async def test(ctx:ApplicationContext):
     return
 
-    
-
 @client.event
 async def on_application_command_error(ctx: ApplicationContext, error: DiscordException):
     guild = "No Guild. (Internal Error)"
     if ctx.guild:
-        try:
+        if hasattr(ctx.channel, "name"):
             guild = f"[{ctx.guild.name} #{ctx.channel.name}]"
-        except:
+        else:
             guild = f"[{ctx.guild.name} #{ctx.channel}]"
     logger.error("COMMAND [/%s] from %s:\n%s",ctx.command.qualified_name,guild,error)
     if isinstance(error.original, errors.NotFound):
         logger.warning("Error 'discord.errors.NotFound'")
-        return await helpers.send(ctx,content=f"Error with discord, Try again.")
+        return await helpers.send(ctx,content="Error with discord, Try again.")
     elif isinstance(error.original,ApiError):
-        return await helpers.send(ctx,content=f"Error caused by: Api Limit Hit :/")
+        return await helpers.send(ctx,content="Error caused by: Api Limit Hit :/")
     elif isinstance(error.original,HTTPError):
         return await helpers.send(ctx,content=f"Error caused by: {error}")
     await helpers.send(ctx,"Unexpected error. Try again later.",delete_after=300)
@@ -68,24 +68,24 @@ async def on_ready():
     client.add_view(RegistrationView())
     client.add_view(EntryView())
     server_setting = await TrialDatabase.select_trial_x_settings()
-    print("Loading custom trial commands...")
+    print("Loading custom commands...")
     from bot.discord_cmd.modules.trial._trial import Trial
     try:
         await Trial.generate_trial_tree(client,server_setting)
     except errors.HTTPException:
         pass
-    print("Loading custom trial commands DONE.")
+    print("Loading custom commands DONE.")
     return
-    print("Loading Test")
+    print("Loading Tests")
     main_group = SlashCommandGroup(
                 name="test",
-                description=f"Test command",
+                description="Test command",
                 guild_ids=[1319980713541505044]
             )
-            
+
     main_group.add_command(SlashCommand(
-        func=test, 
-        name="test", 
+        func=test,
+        name="test",
         description="test function",
         parent=main_group
     ))
@@ -93,11 +93,36 @@ async def on_ready():
     await client.sync_commands()
     print("Test loaded")
 
+@client.event
+async def on_member_update(before,after):
+    if before.roles == after.roles:
+        return
+    new_roles = [role for role in after.roles if role not in before.roles]
+    if not new_roles:
+        return
+    config = await Database.select_role_message_bulk([x.id for x in new_roles])
+    if not config:
+        return
+    for role in new_roles:
+        if role.id not in config:
+            continue
+        links = config[role.id].text.split("links:")
+        if links is None or len(links) in (0,1):
+            view = None
+        else:
+            links = re.findall(r'\[(.*?)\]', links[1])
+            view = helpers.LinksUrlButton(links)
+        try:
+            ch = await client.fetch_channel(config[role.id].channel_id)
+            msg = await ch.send(content=after.mention,embed=helpers.get_emb_role_message(config[role.id],after.mention,role.name),view=view)
+            await msg.edit(content="")
+        except Forbidden:
+            continue
 
 @client.event
 async def on_guild_join(guild):
     channel = guild.system_channel
-    
+
     if not channel:
         for text_channel in guild.text_channels:
             if text_channel.permissions_for(guild.me).send_messages:
@@ -112,12 +137,12 @@ async def on_guild_join(guild):
         emb.add_field(
             name="Getting Started",
             value=(
-                f"Type `/user verify` to verify your account!\n"
-                f"Then you can link the server to a guild with `/admin link server`"
+                "Type `/user verify` to verify your account!\n"
+                "Then you can link the server to a guild with `/admin link server`"
             )
         )
         emb.set_footer(text="Developed by Algol")
-        
+
         await channel.send(embed=emb)
 
 @client.event
@@ -146,7 +171,7 @@ async def on_member_join(member):
         await helpers.give_join_roles(member,conf.groles)
     else:
         await helpers.give_join_roles(member,conf.vroles)
-     
+
 def main():
     try:
         logger.info("Starting Bot. Goodmorning!")
@@ -157,5 +182,3 @@ def main():
         logger.exception("Error on client.main() in _client.py:\n%s",str(e))
     finally:
         logger.info("Exting Bot. Goodbye!")
-
-
