@@ -1,6 +1,7 @@
-from discord import Bot,ApplicationContext,Forbidden,InteractionContextType,IntegrationType,TextChannel,HTTPException,InvalidData, NotFound, Forbidden, Embed, Member, Color,AutocompleteContext,MISSING
+from discord import Bot,ApplicationContext,Forbidden,ButtonStyle,InteractionContextType,IntegrationType,TextChannel,HTTPException,InvalidData, NotFound, Forbidden, Embed, Member, Color,AutocompleteContext,MISSING
 from discord.abc import GuildChannel
 from discord.commands import SlashCommand, SlashCommandGroup
+from discord.ui import View, Button
 from datetime import datetime, timezone, timedelta
 
 from bot.discord_cmd.modules.trial._tasks import TrialTask
@@ -22,6 +23,47 @@ import os
 import ast
 import operator
 import requests
+
+
+
+class LinksUrlButton(View):
+    def __init__(self,links):
+        super().__init__(timeout=None)
+        for link in links:
+            print(link)
+            name,url = link.split(":",1)
+            self.add_item(Button(
+                label=name,
+                style=ButtonStyle.primary,
+                url=url
+            ))
+    
+
+def get_emb_role_message(conf,user:str,role:str):
+    emb = Embed(title=role)
+
+    try:
+        messages = conf.text.format(user=user).split("links:")
+    except KeyError:
+        messages = conf.text
+
+    msg = messages[0].split("\n")
+    fmsg = ""
+    for m in msg:
+        if len(m) + len(msg) > 1024:
+            emb.add_field(
+                name="",
+                value=fmsg
+            )
+            fmsg = ""
+        fmsg += m + "\n"
+    if fmsg != "":
+        emb.add_field(
+            name="",
+            value=fmsg
+        )
+    
+    return emb
 
 
 def make_title(string:str)->str:
@@ -446,7 +488,7 @@ async def get_user(ctx:ApplicationContext|None=None,smmo_id:int|None=None,user:M
         if smmo_id:
             smmo_id = smmo_id
             if smmo_id == bot_user.smmo_id:
-                await send(ctx,"Tip: If you want to see your account you don't need to add the smmo id!")
+                await send(ctx,"Tip: If you want to see your account you don't need to add the smmo id!",delete_after=60)
         else:
             smmo_id = bot_user.smmo_id
     if smmo_id is None:
@@ -472,7 +514,10 @@ class Embed(Embed):
     def __init__(self,*,colour=None,color=None,title=None,type="rich",url=None,description=None,timestamp=None,fields=None,author=None,footer=None,image=None,thumbnail=None):
         temp_color = self._color_cache.get(thumbnail,None)
         if temp_color is None and thumbnail:
-            temp_color = Color.from_rgb(*get_dominant_color(thumbnail))
+            try:
+                temp_color = Color.from_rgb(*get_dominant_color(thumbnail))
+            except:
+                temp_color = Color.random()
             self._color_cache[thumbnail] = temp_color
         if thumbnail is None:
             temp_color = Color.random()
