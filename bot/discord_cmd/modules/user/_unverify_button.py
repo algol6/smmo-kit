@@ -1,6 +1,7 @@
 import discord
 from bot.database import Database
 from bot.discord_cmd.helpers import helpers 
+from bot.discord_cmd.helpers.logger import logger
 
 class UnverifyButton(discord.ui.View):
 

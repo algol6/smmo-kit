@@ -377,7 +377,7 @@ class Users(Cog):
             if not await Database.update_user(ctx.user.id, smmo_id):
                 return await helpers.send(ctx,content="Unknow Error.")
             await helpers.send(ctx,content="Your account is linked.\nYou can set back your motto.")
-            conf = await Database.select_join_roles(ctx.guild.id)
+            conf = await Database.select_join_roles(ctx.guild_id)
             if conf is None:
                 return
             member = ctx.user
@@ -432,7 +432,7 @@ class Users(Cog):
             f"Boss Killed: {profile.boss_kills:,}\n\n"
             f"PVP Kills: {profile.user_kills:,}\n"
             f"Bounties Completed: {profile.bounties_completed:,}\n\n"
-            f"Quest Completed: {profile.quests_complete:,}/114\n"
+            f"Quest Completed: {profile.quests_complete:,}/114{f" ({114-profile.quests_complete:,} left)" if profile.quests_complete != 114 else ""}\n"
             f"Quest performed: {profile.quests_performed:,}\n\n"
             f"Market Trades: {profile.market_trades:,}\n\n"
             f"Chest opened: {profile.chests_opened:,}\n"
