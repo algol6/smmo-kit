@@ -15,7 +15,7 @@ def auto_defer(ephemeral:bool=True):
         return wrapped
     return wrapper
 
-def took_too_long() -> bool:
+def took_too_long():
     def wrapper(func):
         @wraps(func)
         async def wrapped(*args, **kwargs):
@@ -28,11 +28,11 @@ def took_too_long() -> bool:
                             content=f"<@{ctx.author.id}> Command loaded.",
                             ephemeral=True
                         )
-            return f
+                return f
         return wrapped
     return wrapper
 
-def statistics(fun:str="") -> bool:
+def statistics(fun:str=""):
     def wrapper(func):
         @wraps(func)
         async def wrapped(*args, **kwargs):
@@ -45,12 +45,12 @@ def statistics(fun:str="") -> bool:
             #return await func(*args, **kwargs)
             t = time()
             f = await func(*args, **kwargs)
-            await Database.insert_statistics(fun,time()-t)
+            await Database.insert_statistics(fun,int(time()-t))
             return f
         return wrapped
     return wrapper
 
-def trial_enabled() -> bool:
+def trial_enabled():
     def wrapper(func):
         @wraps(func)
         async def wrapped(*args, **kwargs):
@@ -68,7 +68,7 @@ def trial_enabled() -> bool:
         return wrapped
     return wrapper
 
-def trial_user() -> bool:
+def trial_user():
     def wrapper(func):
         @wraps(func)
         async def wrapped(*args, **kwargs):
