@@ -69,24 +69,26 @@ class RequirementsView(discord.ui.View):
         title: list[str] = ["Activity","Levels","Npc","Pvp","Steps"]
         TEMPLATES:list[str] = ["".join(("Players inactive more than ",f"{f'{self.req.days} days' if self.req.days != 1 else 'one day'}:")),
                                "".join(("Players that have gained less than {value:,} {category} in ",f"{f'{self.req.days} days' if self.req.days != 1 else 'one day'}:")),
-                               "[{name}](https://simple-mmo.com/user/view/{id}) last activity: <t:{value}:R>"]
+                               "[{name}](https://simple-mmo.com/user/view/{id}) last activity: <t:{value}:R>",
+                               "[{name}](https://simple-mmo.com/user/view/{id}): {value}"]
         description: str = ""
         value: str = ""
-        if self.type == 0:
-            description = TEMPLATES[0]
-            value = "\n".join(TEMPLATES[2].format(name=v["name"],id=v["id"],value=v["value"]) for v in data)
-        elif self.type == 1 and len(self.data[self.type]) != 0:
-            description = TEMPLATES[1].format(value=self.req.levels,category="levels")
-            value = "\n".join(TEMPLATES[2].format(name=v["name"],id=v["id"],value=v["value"]) for v in data)
-        elif self.type == 2 and len(self.data[self.type]) != 0:
-            description = TEMPLATES[1].format(value=self.req.npc,category="npc kills")
-            value = "\n".join(TEMPLATES[2].format(name=v["name"],id=v["id"],value=v["value"]) for v in data)
-        elif self.type == 3 and len(self.data[self.type]) != 0:
-            description = TEMPLATES[1].format(value=self.req.pvp,category="pvp kills")
-            value = "\n".join(TEMPLATES[2].format(name=v["name"],id=v["id"],value=v["value"]) for v in data)
-        elif self.type == 4 and len(self.data[self.type]) != 0:
-            description = TEMPLATES[1].format(value=self.req.steps,category="steps")
-            value = "\n".join(TEMPLATES[2].format(name=v["name"],id=v["id"],value=v["value"]) for v in data)
+        if len(self.data[self.type]) != 0:
+            if self.type == 0:
+                description = TEMPLATES[0]
+                value = "\n".join(TEMPLATES[2].format(name=v["name"],id=v["id"],value=v["value"]) for v in data)
+            elif self.type == 1:
+                description = TEMPLATES[1].format(value=self.req.levels,category="levels")
+                value = "\n".join(TEMPLATES[3].format(name=v["name"],id=v["id"],value=v["value"]) for v in data)
+            elif self.type == 2:
+                description = TEMPLATES[1].format(value=self.req.npc,category="npc kills")
+                value = "\n".join(TEMPLATES[3].format(name=v["name"],id=v["id"],value=v["value"]) for v in data)
+            elif self.type == 3:
+                description = TEMPLATES[1].format(value=self.req.pvp,category="pvp kills")
+                value = "\n".join(TEMPLATES[3].format(name=v["name"],id=v["id"],value=v["value"]) for v in data)
+            elif self.type == 4:
+                description = TEMPLATES[1].format(value=self.req.steps,category="steps")
+                value = "\n".join(TEMPLATES[3].format(name=v["name"],id=v["id"],value=v["value"]) for v in data)
         else:
             description = "No requirement for this category"
             value = ""
