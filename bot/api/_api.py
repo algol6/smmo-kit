@@ -12,15 +12,15 @@ class ApiError(Exception):
 
     def __str__(self):
         return f"ApiError: {self.message}"
-    
+
 sem = Semaphore(1)
 class SMMOApi:
     _API_URL: str = "https://api.simple-mmo.com/"
-    _API_TOKEN: str = getenv("SMMO_TOKEN")
+    _API_TOKEN: str|None = getenv("SMMO_TOKEN")
     rate_limit_remaining: int = 0
     _first_request_time: float = 0.0
     @staticmethod
-    async def _request(endpoint:str,api_key:str=None) -> dict | list | None:
+    async def _request(endpoint:str,api_key:str|None=None) -> dict | list | None:
         async with sem:
             if SMMOApi.rate_limit_remaining <= 0 and SMMOApi._first_request_time > 0.0:
                 await sleep(60)
@@ -96,7 +96,7 @@ class SMMOApi:
         return None
 
     @staticmethod
-    async def get_player_info(player_id: str) -> model.PlayerInfo | None:
+    async def get_player_info(player_id: int) -> model.PlayerInfo | None:
         resp = await SMMOApi._request(f"v1/player/info/{player_id}")
         if resp is not None:
             return model.PlayerInfo(**resp)
@@ -179,25 +179,25 @@ class SMMOApi:
         resp = await SMMOApi._request("v1/guilds/seasons")
         if resp is not None and type(resp) is list:
             return (model.Season(**v) for v in resp)
-        
+
         return ()
-    
+
     @staticmethod
     async def get_guild_season_leaderboard(season_id: int) -> tuple[model.GuildSeasonLeaderboard]:
         resp = await SMMOApi._request(f"v1/guilds/seasons/{season_id}")
         if resp is not None and type(resp) is list:
             return (model.GuildSeasonLeaderboard(**v) for v in resp)
-        
+
         return ()
-    
+
     @staticmethod
     async def get_guild_wars(guild_id: int, status_id: int) -> tuple[model.Wars]:
         resp = await SMMOApi._request(f"v1/guilds/wars/{guild_id}/{status_id}")
         if resp is not None and type(resp) is list:
             return (model.Wars(**v) for v in resp)
-        
+
         return ()
-    
+
     @staticmethod
     async def get_task(guild_id:int) -> model.Task | None:
         resp = await SMMOApi._request(f"v1/guilds/task/{guild_id}")
