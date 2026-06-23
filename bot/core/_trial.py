@@ -295,7 +295,7 @@ class TrialManager:
                 if refetch:
                     await self.fetch_requisites(True)
             case _:
-                logger.warning("Wrong update str")
+                logger.error("Wrong update str")
     
     # On those create_* i'll call save() after
 
