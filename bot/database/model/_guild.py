@@ -7,7 +7,7 @@ class JoinConf:
     groles: str
     vroles: str
     channel: int
-    
+
 @dataclass
 class GuildStats:
     year: int
@@ -86,3 +86,9 @@ class CompleteLb:
     timestamp: int
     category:str
     timeframe: str
+
+@dataclass
+class MonitorSystem:
+    server_id: int
+    channel_id: int
+    guild_id: int

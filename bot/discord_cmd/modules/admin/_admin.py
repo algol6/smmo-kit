@@ -10,6 +10,9 @@ from bot.api import SMMOApi
 from bot.database import Database
 from bot.discord_cmd.modules.guild._requirements_view import RequirementsView
 from bot.discord_cmd.modules.admin._auto_add_role_selection_view import WelcomeModal
+from bot.discord_cmd.modules.admin._role_message_dialog import RoleMessageModal
+from bot.discord_cmd.modules.admin._configure_lb_view import ConfigLB
+from bot.discord_cmd.modules.admin._configure_pings_view import ConfigPings
 from bot.database.model import Requirements
 from bot.discord_cmd.modules.admin._tasks import AdminTask
 
@@ -17,7 +20,61 @@ from bot.discord_cmd.modules.admin._tasks import AdminTask
 class Admin(Cog):
     def __init__(self, client) -> None:
         self.client = client
-    
+
+    #@subcommand("admin")
+    #@slash_command(description="Configure the pings of the server")
+    #@guild_only()
+    @command_utils.auto_defer()
+    @permissions.require_linked_server()
+    @permissions.require_admin_or_staff()
+    @command_utils.statistics("/admin conf_pings")
+    @command_utils.took_too_long()
+    async def conf_pings(self,ctx:ApplicationContext) -> None:
+        view = ConfigPings()
+        view.client = self.client
+        await view.send(ctx)
+
+    @subcommand("admin")
+    @slash_command(description="Configure the leaderboards of the server")
+    @guild_only()
+    @command_utils.auto_defer()
+    @permissions.require_linked_server()
+    @permissions.require_admin_or_staff()
+    @command_utils.statistics("/admin conf_leaderboards")
+    @command_utils.took_too_long()
+    async def conf_leaderboards(self,ctx:ApplicationContext) -> None:
+        view = ConfigLB()
+        view.client = self.client
+        await view.send(ctx)
+
+    @subcommand("admin")
+    @slash_command(description="Set a message to send when a member of the server get a role")
+    @guild_only()
+    @permissions.require_linked_server()
+    @permissions.require_admin_or_staff()
+    @command_utils.statistics("/admin set_role_message")
+    @command_utils.took_too_long()
+    async def set_role_message(self,ctx:ApplicationContext,role:Role,channel:TextChannel) -> None:
+        if not ctx.guild.me.guild_permissions.manage_roles:
+            return await ctx.followup.send(content="I don't have the perms to give roles")
+        modal = RoleMessageModal(title="Set Message")
+        modal.author_id = ctx.author.id
+        modal.role = role
+        modal.channel = channel
+        await ctx.send_modal(modal)
+
+    @subcommand("admin")
+    @slash_command(description="remove message to send for a role")
+    @guild_only()
+    @command_utils.auto_defer()
+    @permissions.require_linked_server()
+    @permissions.require_admin_or_staff()
+    @command_utils.statistics("/admin rm_role_message")
+    @command_utils.took_too_long()
+    async def rm_role_message(self,ctx:ApplicationContext,role:Role) -> None:
+        await Database.delete_role_message(role.id)
+        await helpers.send(ctx,"Message for the role removed")
+
     @subcommand("admin")
     @slash_command(description="Verify a member of your guild")
     @guild_only()
@@ -53,9 +110,6 @@ class Admin(Cog):
     async def set_join(self, ctx:ApplicationContext) -> None:
         if not ctx.guild.me.guild_permissions.manage_roles:
             return await ctx.followup.send(content="I don't have the perms to give roles")
-        conf = await Database.select_join_roles(ctx.guild.id)
-        if conf is not None:
-            return await ctx.followup.send(content="Message already set, remove it before setting another (/admin rm_join)")
         modal = WelcomeModal(title="Set Message")
         modal.author_id = ctx.author.id
         await ctx.send_modal(modal)
@@ -70,7 +124,7 @@ class Admin(Cog):
     async def rm_join(self, ctx:ApplicationContext) -> None:
         await Database.delete_join_roles(ctx.guild.id)
         return await ctx.followup.send(content="Done")
-        
+
 
     @subcommand("admin")
     @slash_command(description="Analize last 7 days of the guild and suggest best task to gain pp/gxp")
@@ -281,14 +335,14 @@ class Admin(Cog):
     @command_utils.took_too_long()
     async def server(self,ctx:ApplicationContext,guild_id:int) -> None:
         if hasattr(ctx,"user_game_profile") and ctx.user_game_profile:
-            player = ctx.user_game_profile 
+            player = ctx.user_game_profile
         else:
             player = await SMMOApi.get_player_info(ctx.discord_user.smmo_id)
         guild_members = await SMMOApi.get_guild_members(guild_id)
         if player.guild is not None and player.guild.id == guild_id and any(x.position != "Member" for x in guild_members if player.id == x.user_id):
             if not await Database.insert_server(guild_id, ctx.guild_id):
-                logger.Warning("Can't insert guild_id into Database")
-                return await helpers.send(ctx,"Error.")
+                logger.warning("Can't insert guild_id into Database")
+                return await helpers.send(ctx,"Error or server already linked.")
             return await helpers.send(ctx,"Server added")
         await helpers.send(ctx,"You need to be in a guild or be the Leader/colead/officer to link it to a discord server.")
 
@@ -332,23 +386,24 @@ class Admin(Cog):
     @command_utils.took_too_long()
     async def check_req(self,ctx:ApplicationContext,days:int=0,levels:int=0,npc:int=0,pvp:int=0,steps:int=0,ignore_staff:bool=True):
         req = await Database.select_requirements(ctx.game_guild_id)
-
-        if all(v == 0 for v in [days, levels, npc, pvp, steps]) and req is None:
-            return await helpers.send(ctx,content="Set requirements or add manually the parameters in the command")
-        if days is None and req is None:
-            return await helpers.send(ctx,content="Days is required.")
         if all(v is None for v in [req, levels, npc, pvp, steps]):
             return await helpers.send(ctx,content="Required at least one parameter *(levels,npc,pvp or steps)*")
-        if days == 0 and req is not None:
-            days = req.days
-        if levels == 0 and req is not None:
-            levels = req.levels
-        if npc == 0 and req is not None:
-            npc = req.npc
-        if pvp == 0 and req is not None:
-            pvp = req.pvp
-        if steps == 0 and req is not None:
-            steps = req.steps
+        if req is None:
+            if all(v == 0 for v in [days, levels, npc, pvp, steps]):
+                return await helpers.send(ctx,content="Set requirements or add manually the parameters in the command")
+            if days is None:
+                return await helpers.send(ctx,content="Days is required.")
+        else:
+            if days == 0:
+                days = req.days
+            if levels == 0:
+                levels = req.levels
+            if npc == 0:
+                npc = req.npc
+            if pvp == 0:
+                pvp = req.pvp
+            if steps == 0:
+                steps = req.steps
 
         req = Requirements(ctx.game_guild_id, days, levels, npc, pvp, steps)
 
@@ -357,6 +412,7 @@ class Admin(Cog):
 
         if is_empty:
             return await ctx.followup.send(content="Error when getting members list")
+        guild_members = tuple(guild_members)
 
         date = helpers.get_current_date_game() - timedelta(days=req.days)
         la: list = []
@@ -365,12 +421,13 @@ class Admin(Cog):
         pv: list = []
         st: list = []
         bulk_stats = await Database.select_user_stat_bulk([m.user_id for m in guild_members], date.year, date.month, date.day)
+        ts = datetime.now().timestamp()
         for member in guild_members:
             if any(member.user_id == v.smmo_id for v in safe_users):
                 continue
             if ignore_staff and member.position != "Member":
                 continue
-            if member.last_activity <= (datetime.now().timestamp() - req.days * 86400):
+            if member.last_activity <= (ts - req.days * 86400):
                 la.append(
                     {
                         "name": member.name,
@@ -378,7 +435,10 @@ class Admin(Cog):
                         "id": member.user_id,
                     }
                 )
-            member_stats = bulk_stats[member.user_id]
+            if member.user_id in bulk_stats:
+                member_stats = bulk_stats[member.user_id]
+            else:
+                member_stats = await Database.select_user_stat(member.user_id, date.year, date.month, date.day)
             if member_stats is None:
                 continue
 
@@ -418,7 +478,6 @@ class Admin(Cog):
         req_view = RequirementsView()
         req_view.ignore_staff = ignore_staff
         req_view.req = req
-        req_view.last_activity = la
         req_view.data = (
             sorted(la, key=lambda item: item["value"]),
             sorted(lvl, key=lambda item: item["value"]),
@@ -473,10 +532,10 @@ class Admin(Cog):
     @command_utils.auto_defer()
     @command_utils.statistics("/admin req_remove_safe_list")
     @command_utils.took_too_long()
-    async def req_remove_safe_list(self,ctx:ApplicationContext,smmo_id:int):    
+    async def req_remove_safe_list(self,ctx:ApplicationContext,smmo_id:int):
         await Database.delete_safe_user(smmo_id, ctx.game_guild_id)
         return await helpers.send(ctx,content="Player removed.")
-    
+
     @subcommand("admin guilds")
     @slash_command(description="Set a daily message that show top 25 guild gains")
     @guild_only()
@@ -564,7 +623,7 @@ class Admin(Cog):
             await ch.send(content="test message.", delete_after=1)
         except Forbidden:
             return await helpers.send(ctx,content="Bot doesn't have the perms to see/write the channel.")
-        
+
         timestamp = int(helpers.get_date_game(timeframe).timestamp())
 
         message = await channel.send(content="The member lb will be setted here.")
