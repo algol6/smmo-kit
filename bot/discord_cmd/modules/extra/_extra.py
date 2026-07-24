@@ -58,7 +58,7 @@ class Extra(Cog):
         emb.add_field(name="Guild Linked", value=f"`{await Database.select_counter_guild_linked()}`", inline=True)
         emb.add_field(name="Servers", value=f"`{len(self.client.guilds)}`", inline=True)
         emb.add_field(name="Developer's discord", value="`algol6`", inline=True)
-        emb.add_field(name="Bot Version", value=f"`v2.3.2`", inline=True)
+        emb.add_field(name="Bot Version", value="`v2.4.1`", inline=True)
         emb.set_footer(text="Praise to DPS!")
         await helpers.send(ctx,embed=emb)
 
@@ -88,7 +88,7 @@ class Extra(Cog):
         else:
             embed=helpers.Embed(title="PING", description=f"The ping is **{round(self.client.latency *1000)}** milliseconds!", color=0x990000)
         await ctx.respond(embed=embed)
-    
+
 
 
 def setup(client:Bot):
