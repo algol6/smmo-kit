@@ -1,6 +1,6 @@
 import discord
 from bot.database import TrialDatabase
-from bot.discord_cmd.helpers import helpers 
+from bot.discord_cmd.helpers import helpers
 from bot.discord_cmd.modules.trial._helper import send_log, LogType
 
 class CancelTaskButton(discord.ui.View):
@@ -49,10 +49,9 @@ class CancelTaskButton(discord.ui.View):
         self.trial_mgr.records[self.rec_id].cancelled = True
         await self.trial_mgr.update("record",self.trial_mgr.records[self.rec_id],True)
         await interaction.response.edit_message(embed=helpers.Embed(title=f"{helpers.make_title(self.trial_mgr.trial.name)} cancelled."))
-        
-    
+
+
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancell_button(self, button:discord.ui.Button, interaction:discord.Interaction,row=1):
         self.disable_all_items()
         await interaction.response.edit_message(embed=helpers.Embed(title="Operation cancelled"))
-

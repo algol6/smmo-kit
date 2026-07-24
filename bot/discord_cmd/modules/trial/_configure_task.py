@@ -137,7 +137,7 @@ class AddTaskView(discord.ui.View):
         self.category_selected = int(selected_value)
         self.update_btn()
         await interaction.edit_original_response(embed=await self.create_embed(),view=self)
-        
+
     @discord.ui.button(label="Set Info", style=discord.ButtonStyle.blurple,row=1)
     async def set_info_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         modal = AddTaskModal(title="Set Task Info")
@@ -153,7 +153,7 @@ class AddTaskView(discord.ui.View):
         self.update_btn()
         await modal.modal_interaction.edit_original_response(embed=await self.create_embed(),view=self)
 
-    
+
     @discord.ui.button(label="Add Requisite", style=discord.ButtonStyle.blurple,row=2)
     async def add_req_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         modal = AddRequisiveModal(title="Add Requisite")
@@ -161,7 +161,7 @@ class AddTaskView(discord.ui.View):
         await modal.wait()
         if modal.formula is None or modal.goal is None or not helpers.is_number(modal.goal):
             return
-        
+
         self.requisites.append({"formula":modal.formula,"goal":int(modal.goal)})
         self.update_btn()
         await modal.modal_interaction.edit_original_response(embed=await self.create_embed(),view=self)
@@ -224,13 +224,13 @@ class RemoveRequisiteView(discord.ui.View):
 
     def update_btn(self):
         self.confirm_button.disabled = self.task is None or self.requisite is None
-        
+
     async def send(self, ctx:discord.Interaction):
         await ctx.edit_original_response(embed=await self.create_embed(),view=self)
 
     async def create_embed(self):
         emb = helpers.Embed(title="Task Deletion")
-        
+
         emb.add_field(
             name="Task Remotion:",
             value="Select a requisite to remove"
@@ -257,14 +257,14 @@ class RemoveRequisiteView(discord.ui.View):
         if len(options_tasks) == 0:
             disabled = True
             options_tasks = [discord.SelectOption(label="None")]
-        
+
         self.requisite_select.options = options_tasks
         self.requisite_select.disabled = disabled
         self.requisite_select.placeholder = f"Choose a Requisite..."
-        
+
         if not self.get_item("requisite-selection"):
             self.add_item(self.requisite_select)
-            
+
 
         self.update_btn()
         await interaction.edit_original_response(embed=await self.create_embed(),view=self)
@@ -280,7 +280,7 @@ class RemoveRequisiteView(discord.ui.View):
 
         self.update_btn()
         await interaction.edit_original_response(embed=await self.create_embed(),view=self)
-    
+
 
     @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green,row=3,disabled=True)
     async def confirm_button(self, button:discord.ui.Button, interaction:discord.Interaction):
@@ -328,7 +328,7 @@ class AddTaskModal(discord.ui.Modal):
         self.reward = None
         self.bonus_time = None
         self.bonus = None
-        
+
         self.point = 0
 
     async def callback(self, interaction: discord.Interaction):
@@ -382,13 +382,13 @@ class RemoveTaskView(discord.ui.View):
 
     def update_btn(self):
         self.confirm_button.disabled = self.task is None
-        
+
     async def send(self, ctx:discord.Interaction):
         await ctx.edit_original_response(embed=await self.create_embed(),view=self)
 
     async def create_embed(self):
         emb = helpers.Embed(title="Task Deletion")
-        
+
         emb.add_field(
             name="Task Remotion:",
             value="Select a requisite to remove"
