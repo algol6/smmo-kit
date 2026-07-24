@@ -6,7 +6,6 @@ from bot.api import SMMOApi
 from bot.database import Database
 from bot.discord_cmd.modules.guild._advleaderboard_view import AdvleaderboardView
 from bot.discord_cmd.modules.guild._member_list_view import MemberListView
-from bot.discord_cmd.modules.guild._contribution_view import ContributionView
 from bot.discord_cmd.modules.guild._contribution_dialog import ContributionModal
 from bot.discord_cmd.modules.guild._war_target_view import WarTargetView
 from bot.discord_cmd.modules.guild._guild_gains_view import GuildGainsView
@@ -17,12 +16,10 @@ from bot.discord_cmd.helpers.logger import logger
 
 from datetime import datetime, time, date, timezone, timedelta
 from math import floor
-from matplotlib import pyplot as plt
-import pandas as pd
 
 # TODO: do graph command but show only one guild all time xp across seasons
 
-        
+
 class Guild(Cog):
     def __init__(self, client):
         self.client:Bot = client
@@ -47,7 +44,7 @@ class Guild(Cog):
             value=(
                 f"{n_raids} Raids for {h_raid} hours\n"
                 f"- Gold Cost: {n_raids:,} x {h_raid:,} x 1,000,000 = {raid_cost:,}\n"
-                f"- PP Cost: {h_raid*n_raids:,}"
+                f"- PP Cost: {n_raids:,} x {h_raid:,} = {h_raid*n_raids:,}"
             ),
             inline=False
         )
@@ -74,13 +71,13 @@ class Guild(Cog):
             value=(
                 f"Daily:\n"
                 f"- Gold Cost: {total_cost:,}\n"
-                f"- PP Cost: {total_pp:,}\n"
+                f"- PP Cost: {total_pp:,} (Daily PP tax included: +1)\n"
                 f"\nWeekly:\n"
                 f"- Gold Cost: {total_cost*7:,}\n"
-                f"- PP Cost: {total_pp*7:,}\n"
+                f"- PP Cost: {total_pp*7:,} (Daily PP tax included: +7)\n"
                 f"\nMonthly (28 days):\n"
                 f"- Gold Cost: {total_cost*28:,}\n"
-                f"- PP Cost: {total_pp*28:,}\n"
+                f"- PP Cost: {total_pp*28:,} (Daily PP tax included: +28)\n"
             ),
             inline=False
         )
@@ -107,7 +104,7 @@ class Guild(Cog):
             return await helpers.send(ctx,content="No data found")
         emb = helpers.Embed(title=f"{guild.name}'s Overall", description="Most Experience gained in a day:", thumbnail=f"https://simple-mmo.com/img/icons/{guild.icon}")
         for d in data:
-            emb.add_field(name="", 
+            emb.add_field(name="",
                         value=f"<t:{int((datetime(d.year,d.month,d.day,11,59)).timestamp()-86400)}>-<t:{int(d.time)}>\n**Experience**: +{d.experience:,}",
                         inline=False)
         emb.set_footer(text="Data limited to that saved in the Database.")
@@ -183,7 +180,7 @@ class Guild(Cog):
             else:
                 embed.add_field(name="Officer", value="\n".join(x["Officer"]), inline=False)
         await helpers.send(ctx,embed=embed)
-    
+
     @subcommand("guild")
     @slash_command(description="Show the members of the guild")
     @guild_only()
@@ -241,10 +238,10 @@ class Guild(Cog):
                     msg2 = ""
         else:
             embed.add_field(name="",value=msg,inline=False)
-    
+
         await helpers.send(ctx,embed=embed)
 
-    
+
     @subcommand("guild")
     @slash_command(description="Show war info of the guild")
     @guild_only()
@@ -260,7 +257,7 @@ class Guild(Cog):
         if not guild_id.isdigit():
             return await helpers.send(ctx,content="Guild ID not found")
         guild = await SMMOApi.get_guild_info(guild_id)
-        
+
         if guild is None:
             return await helpers.send(ctx,content="Guild not found")
 
@@ -308,7 +305,7 @@ class Guild(Cog):
                         value=await helpers.make_wars_emb(previus_guild, c, v, prev, war_xp,True),
                         inline=False
                         )
-                
+
                 cur_guild = await SMMOApi.get_guild_info(guild_id)
                 msg: str = await helpers.make_wars_emb(cur_guild, c, v, season_lb, war_xp)
                 embed.add_field(
@@ -352,7 +349,7 @@ class Guild(Cog):
         gains_view.season = season
         gains_view.last_update = int(datetime.now().timestamp())
         return await gains_view.send(ctx)
-    
+
 
     @subcommand("guild members")
     @slash_command(description="Show guild stepping members")
@@ -431,15 +428,21 @@ class Guild(Cog):
     async def members_lb(self,ctx:ApplicationContext,timeframe:str="Daily",guild_id:int=None,reverse:bool=False) -> None:
         if guild_id is None:
             guild_id = ctx.game_guild_id
-        date = helpers.get_date_game(timeframe)
-        to_date = helpers.get_current_date_game() 
+
+        to_date = helpers.get_current_date_game()
         if timeframe != "Yesterday":
             to_date += timedelta(days=1)
-        emb = await helpers.make_members_lb(guild_id,date.strftime("%d/%m/%Y"),to_date,reverse=reverse,live_stats=timeframe != "Yesterday")
+        emb = await helpers.make_members_lb(
+            guild_id,
+            helpers.get_date_game(timeframe),
+            to_date=to_date.strftime("%d/%m/%Y"),
+            reverse=reverse,
+            live_stats=timeframe != "Yesterday"
+        )
         if emb is None:
             return await helpers.send(ctx,content="No data found")
         return await helpers.send(ctx,embed=emb)
-        
+
     @subcommand("guild members")
     @slash_command(description="Show the stats of the guild, default: Yesterday")
     @command_utils.auto_defer(False)
@@ -459,7 +462,7 @@ class Guild(Cog):
                 return await helpers.send(ctx,content="Wrong date format. use dd/mm/yyyy format")
         else:
             s_date = helpers.get_date_game(timeframe)
-        
+
         if to_date is None:
             e_date = helpers.get_current_date_game()
             if timeframe != "Yesterday":
@@ -493,7 +496,7 @@ class Guild(Cog):
                 index = 6
             else:
                 index = 7
-            
+
             da[index][0].append({"name":m.name, "stats": d2.npc_kills - d1.npc_kills, "id":d1.smmo_id})
             da[index][1].append({"name":m.name, "stats": d2.user_kills - d1.user_kills, "id":d1.smmo_id})
             da[index][2].append({"name":m.name, "stats": d2.steps - d1.steps, "id":d1.smmo_id})
@@ -503,20 +506,20 @@ class Guild(Cog):
             da[0][1].append({"name":m.name, "stats": d2.user_kills - d1.user_kills, "id":d1.smmo_id})
             da[0][2].append({"name":m.name, "stats": d2.steps - d1.steps, "id":d1.smmo_id})
             da[0][3].append({"name":m.name, "stats": d2.level - d1.level if d2.level - d1.level >= 0 else d2.level, "id":d1.smmo_id})
- 
+
         if all(len(x)==0 for x in da):
             return await helpers.send(ctx,content="No data found.")
-    
+
         for i in range(len(da)):
             for j in range(len(da[i])):
-                da[i][j] = sorted(da[i][j], key=lambda item: item["stats"],reverse=True)  
+                da[i][j] = sorted(da[i][j], key=lambda item: item["stats"],reverse=True)
 
         advlb_view = AdvleaderboardView()
         advlb_view.data = da
         advlb_view.end_data = int(e_date.timestamp())
         advlb_view.start_data = int(s_date.timestamp())
         await advlb_view.send(ctx)
-    
+
     @subcommand("guild")
     @slash_command(description="Show guild contribution")
     @guild_only()
@@ -552,4 +555,3 @@ class Guild(Cog):
 def setup(client:Bot):
     client.add_cog(Guild(client))
     client.add_cog(GuildTask(client))
-    

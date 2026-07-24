@@ -2,11 +2,13 @@ from discord.ext.commands import Cog
 from discord.ext.tasks import loop
 
 from bot.api import SMMOApi
+from bot.api._api import ApiError
 from bot.database import Database
 from bot.discord_cmd.helpers import permissions, command_utils, helpers
 from bot.discord_cmd.helpers.logger import logger
 
 from datetime import datetime, time, date, timezone, timedelta
+from asyncio import sleep
 
 class GuildTask(Cog):
     def __init__(self, client):
@@ -22,14 +24,13 @@ class GuildTask(Cog):
         self.check_stats.cancel()
         self.check_raid.cancel()
 
-        
+
     @loop(time=time(hour=12))
     async def check_stats(self, end_season:bool=False,start_season:bool=False):
         logger.info("Started saving guild stats.")
         season_id:int = await Database.select_last_season_id()
         id = set()
         guilds: list[int] = await Database.select_all_server_guild()
-        date = datetime.now(tz=timezone.utc)
         if end_season:
             date = helpers.get_current_date_game() + timedelta(days=1)
             season_id -=1
@@ -49,6 +50,14 @@ class GuildTask(Cog):
             if i in id:
                 continue
             data = await SMMOApi.get_guild_info(i)
+            #data = None
+            #n = 1
+            #while data is None:
+            #    try:
+            #        data = await SMMOApi.get_guild_info(i)
+            #    except ApiError:
+            #        await sleep(60*n)
+            #        n += 1
             if data is None:
                 continue
             if not await Database.insert_guild_stats(date.year,date.month,date.day,date_timestamp,i,0,data.current_season_exp,season_id):
