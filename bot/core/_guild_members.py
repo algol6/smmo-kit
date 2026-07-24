@@ -1,3 +1,6 @@
+from asyncio import sleep
+
+from bot.api._api import ApiError
 from bot.database import Database
 from bot.api import SMMOApi
 from bot.discord_cmd.helpers.logger import logger
@@ -36,8 +39,15 @@ class GuildMembersManager:
         recent_updated = last_guild_update > datetime.now().timestamp() - 600
         if recent_updated and not force and self._fetch_cache():
             return
-
         data = await SMMOApi.get_guild_members(self.guild_id)
+        #data = None
+        #n = 1
+        #while data is None:
+        #    try:
+        #        data = await SMMOApi.get_guild_members(self.guild_id)
+        #    except ApiError:
+        #        await sleep(60*n)
+        #        n += 1
         if data:
             self._last_updates[self.guild_id] = datetime.now().timestamp()
             self._cache[self.guild_id] = data
