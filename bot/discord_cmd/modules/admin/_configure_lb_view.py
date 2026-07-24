@@ -6,7 +6,7 @@ from bot.api import SMMOApi
 
 
 class ConfigLB(discord.ui.View):
-    def __init__(self):
+    def __init__(self,server_id:int):
         super().__init__(timeout=None)
         self.category_select = discord.ui.Select(
             custom_id="cat-selection",
@@ -20,20 +20,40 @@ class ConfigLB(discord.ui.View):
             ]
         )
         self.category_select.callback = self.select3_callback
-
+        self.sid = server_id
         self.ch = None
         self.tf = None
         self.type = None
         self.cat = None
+        self.conf = None
+        self.TEMPLATE = (
+            "Members Leaderboards set:",
+            "Full Members Leaderboards set:",
+            "Guild Gains Leaderboards set:",
+            #"Worldbosses Messages set:",
+            "[<#{chid}>]",
+            "[<#{chid}>] {val}",
+            "[<#{chid}>]",
+            #"[<#{chid}>]",
+        )
+
+    async def load_conf(self):
+        self.conf = [
+            tuple(await Database.select_lb_sid(self.sid)),
+            tuple(await Database.select_all_cmp_sid(self.sid)),
+            tuple(await Database.select_gains_leaderboard_sid(self.sid)),
+            #tuple(await Database.select_wb_message_sid(self.sid))
+        ]
 
     async def send(self, ctx:discord.ApplicationContext):
+        await self.load_conf()
         await ctx.followup.send(embed=await self.create_embed(),view=self)
 
     def update_btn(self):
         if self.type != "Members Complete":
-            self.confirm_button.disabled = self.tf is None or self.type is None or self.ch is None
+            self.confirm_button.disabled = any(x is None for x in (self.tf,self.type,self.ch))
         else:
-            self.confirm_button.disabled = self.tf is None or self.type is None or self.cat is not None or self.ch is None
+            self.confirm_button.disabled = any(x is None for x in (self.tf,self.type,self.cat,self.ch))
 
     async def update_message(self, interaction:discord.Interaction):
         self.update_btn()
@@ -56,7 +76,31 @@ class ConfigLB(discord.ui.View):
             value="Set a leaderboard to show all members of one category. Multiple leaderboards can be set in the same channel to show all of the categories.",
             inline=False
         )
+        emb.add_field(
+            name="",
+            value="",
+            inline=False
+        )
+        if self.conf is not None:
+            for i,c in enumerate(self.conf):
+                if c is None or len(c) == 0:
+                    continue
+                fmsg = ""
+                for x in c:
+                    if x is None:
+                        continue
+                    match i:
+                        case 1:
+                            msg = self.TEMPLATE[i+(len(self.TEMPLATE)//2)].format(chid=x.channel_id, val=x.category)
+                        case _:
+                            msg = self.TEMPLATE[i+(len(self.TEMPLATE)//2)].format(chid=x.channel_id)
 
+                    fmsg += msg + "\n"
+                emb.add_field(
+                    name=self.TEMPLATE[i],
+                    value=fmsg,
+                    inline=False
+                )
         return emb
 
     @discord.ui.select(
@@ -70,7 +114,7 @@ class ConfigLB(discord.ui.View):
         await self.update_message(interaction)
 
     @discord.ui.select(
-        row = 1,
+        row = 2,
         placeholder="Type",
         options=[
             discord.SelectOption(label="Guild"),
@@ -80,21 +124,25 @@ class ConfigLB(discord.ui.View):
     )
     async def select1_callback(self, select, interaction):
         await interaction.response.defer()
-        selected_value = self.select1_callback.values[0]
+        selected_value = select.values[0]
         if selected_value is None:
             return
         for option in self.select1_callback.options:
             option.default = option.value == selected_value
         self.type = selected_value
+        print(self.type)
         if self.type == "Members Complete" and not self.get_item("cat-selection"):
             self.add_item(self.category_select)
         elif self.get_item("cat-selection"):
-            self.cat = None
             self.remove_item(self.category_select)
+
+        if self.type != "Members Complete":
+            self.cat = None
+
         await self.update_message(interaction)
 
     @discord.ui.select(
-        row = 2,
+        row = 1,
         placeholder="Timeframe",
         options=[
             discord.SelectOption(label="Daily"),
@@ -104,7 +152,7 @@ class ConfigLB(discord.ui.View):
     )
     async def select2_callback(self, select, interaction):
         await interaction.response.defer()
-        selected_value = self.select2_callback.values[0]
+        selected_value = select.values[0]
         if selected_value is None:
             return
         for option in self.select2_callback.options:
@@ -115,7 +163,7 @@ class ConfigLB(discord.ui.View):
 
     async def select3_callback(self, interaction):
         await interaction.response.defer()
-        selected_value = self.select3_callback.values[0]
+        selected_value = self.category_select.values[0]
         if selected_value is None:
             return
         for option in self.select3_callback.options:
@@ -123,12 +171,12 @@ class ConfigLB(discord.ui.View):
         self.cat = selected_value
         await self.update_message(interaction)
 
-    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red,emoji="🗑️")
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red,emoji="🗑️",row=4)
     async def cancel_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         await interaction.response.defer()
         await interaction.edit_original_response(embed=helpers.Embed(title="Operation cancelled"),view=None)
 
-    @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green,emoji="✔️",disabled=True)
+    @discord.ui.button(label="Add Message", style=discord.ButtonStyle.green,emoji="✔️",disabled=True,row=4)
     async def confirm_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         await interaction.response.defer()
 
@@ -142,9 +190,9 @@ class ConfigLB(discord.ui.View):
         error = False
         match self.type:
             case "Guild":
-                error = not await Database.insert_gains_leaderboard(channel.id, message.id)
+                error = not await Database.insert_gains_leaderboard(channel.id, message.id,interaction.guild.id,self.tf,timestamp)
             case "Members General":
-                error = not await Database.insert_lb(channel.id, message.id, await Database.select_server(interaction.guild_id),helpers.get_current_date_game().strftime("%d/%m/%Y"))
+                error = not await Database.insert_lb(channel.id, message.id, await Database.select_server(interaction.guild_id),interaction.guild.id,self.tf,timestamp)
             case "Members Complete":
                 error = not await Database.insert_cmp_lb(channel.id,message.id,await Database.select_server(interaction.guild_id),timestamp,self.cat,self.tf)
 
@@ -159,4 +207,5 @@ class ConfigLB(discord.ui.View):
         else:
             await interaction.followup.send(content="Set up complete.", ephemeral=True)
 
+        await self.load_conf()
         await self.update_message(interaction)

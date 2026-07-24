@@ -4,22 +4,36 @@ from discord.ext.commands import Cog
 from pycord.multicog import subcommand
 from datetime import datetime, timedelta
 
+from bot.core._guild_members import GuildMembersManager
 from bot.discord_cmd.helpers import permissions, command_utils, helpers
 from bot.discord_cmd.helpers.logger import logger
 from bot.api import SMMOApi
 from bot.database import Database
+from bot.database.model import Requirements
+from bot.discord_cmd.modules.admin._configure_monitor_view import ConfMonitor
 from bot.discord_cmd.modules.guild._requirements_view import RequirementsView
 from bot.discord_cmd.modules.admin._auto_add_role_selection_view import WelcomeModal
 from bot.discord_cmd.modules.admin._role_message_dialog import RoleMessageModal
 from bot.discord_cmd.modules.admin._configure_lb_view import ConfigLB
 from bot.discord_cmd.modules.admin._configure_pings_view import ConfigPings
-from bot.database.model import Requirements
 from bot.discord_cmd.modules.admin._tasks import AdminTask
 
 
 class Admin(Cog):
     def __init__(self, client) -> None:
         self.client = client
+
+    @subcommand("admin guilds")
+    @slash_command(description="Configure the monitor system of the server")
+    @guild_only()
+    @command_utils.auto_defer()
+    @permissions.require_linked_server()
+    @permissions.require_admin_or_staff()
+    @command_utils.statistics("/admin conf_monitor_system")
+    @command_utils.took_too_long()
+    async def conf_monitor_system(self,ctx:ApplicationContext) -> None:
+        view = ConfMonitor(ctx.guild_id,ctx.game_guild_id, self.client)
+        await view.send(ctx)
 
     #@subcommand("admin")
     #@slash_command(description="Configure the pings of the server")
@@ -30,7 +44,7 @@ class Admin(Cog):
     @command_utils.statistics("/admin conf_pings")
     @command_utils.took_too_long()
     async def conf_pings(self,ctx:ApplicationContext) -> None:
-        view = ConfigPings()
+        view = ConfigPings(ctx.guild_id)
         view.client = self.client
         await view.send(ctx)
 
@@ -43,7 +57,7 @@ class Admin(Cog):
     @command_utils.statistics("/admin conf_leaderboards")
     @command_utils.took_too_long()
     async def conf_leaderboards(self,ctx:ApplicationContext) -> None:
-        view = ConfigLB()
+        view = ConfigLB(ctx.guild_id)
         view.client = self.client
         await view.send(ctx)
 
@@ -346,9 +360,9 @@ class Admin(Cog):
             return await helpers.send(ctx,"Server added")
         await helpers.send(ctx,"You need to be in a guild or be the Leader/colead/officer to link it to a discord server.")
 
-    @subcommand("admin guilds")
-    @slash_command(description="Set guild requirement.")
-    @guild_only()
+    #@subcommand("admin guilds")
+    #@slash_command(description="Set guild requirement.")
+    #@guild_only()
     @option(name="days",description="ex: 7 to check the user who didn't meet req during the past 7days",required=True)
     @option(name="levels", description="Set to 0 to ignore this stats",default=0)
     @option(name="npc", description="Set to 0 to ignore this stats",default=0)
@@ -364,9 +378,9 @@ class Admin(Cog):
             return await helpers.send(ctx,content="Requirements already added for this guild.\nRemove first before adding again")
         await helpers.send(ctx,content="Requirements saved.")
 
-    @subcommand("admin guilds")
-    @slash_command(description="Remove guild requirement.")
-    @guild_only()
+    #@subcommand("admin guilds")
+    #@slash_command(description="Remove guild requirement.")
+    #@guild_only()
     @permissions.require_linked_server()
     @permissions.require_admin_or_staff()
     @command_utils.auto_defer()
@@ -407,12 +421,13 @@ class Admin(Cog):
 
         req = Requirements(ctx.game_guild_id, days, levels, npc, pvp, steps)
 
-        is_empty,guild_members = helpers.gen_is_empty(await SMMOApi.get_guild_members(req.guild_id))
-        safe_users = await Database.select_safe_user(req.guild_id)
-
-        if is_empty:
+        guild_mgr = GuildMembersManager(req.guild_id)
+        await guild_mgr.fetch_members()
+        if guild_mgr.members is None:
             return await ctx.followup.send(content="Error when getting members list")
-        guild_members = tuple(guild_members)
+
+        safe_users = await Database.select_safe_user(req.guild_id)
+        guild_members = tuple(guild_mgr.members.values())
 
         date = helpers.get_current_date_game() - timedelta(days=req.days)
         la: list = []
@@ -458,7 +473,7 @@ class Admin(Cog):
                         "id": member.user_id,
                     }
                 )
-            if req.pvp != 0 and member.user_kills - member_stats.user_kills < req.pvp:
+            if req.pvp != 0 and not member.safe_mode and member.user_kills - member_stats.user_kills < req.pvp:
                 pv.append(
                     {
                         "name": member.name,
@@ -517,7 +532,7 @@ class Admin(Cog):
     @command_utils.statistics("/admin req_add_safe_list")
     @command_utils.took_too_long()
     async def req_add_safe_list(self,ctx:ApplicationContext,smmo_id:int):
-        player = helpers.get_user(smmo_id=smmo_id)
+        player = await helpers.get_user(smmo_id=smmo_id)
         if player is None:
             return await helpers.send(ctx,content="Player not found.")
         if not await Database.insert_safe_user(smmo_id, ctx.game_guild_id):
@@ -536,115 +551,115 @@ class Admin(Cog):
         await Database.delete_safe_user(smmo_id, ctx.game_guild_id)
         return await helpers.send(ctx,content="Player removed.")
 
-    @subcommand("admin guilds")
-    @slash_command(description="Set a daily message that show top 25 guild gains")
-    @guild_only()
-    @permissions.require_admin_or_staff()
-    @command_utils.auto_defer()
-    @command_utils.statistics("/admin set_daily_gains_lb")
-    @command_utils.took_too_long()
-    async def set_daily_gains_lb(self,ctx:ApplicationContext,channel:TextChannel=None):
-        if channel is None:
-            channel = ctx.channel
-        try:
-            ch = await self.client.fetch_channel(channel.id)
-            await ch.send(content="test message.", delete_after=1)
-        except Forbidden:
-            return await helpers.send(ctx,content="Bot doesn't have the perms to see/write the channel.")
-        message = await channel.send(content="The gains lb will be setted here.")
-        if not await Database.insert_gains_leaderboard(channel.id, message.id):
-            return await helpers.send(ctx,content="Already set")
-        await helpers.send(ctx,content="Done")
+    # @subcommand("admin guilds")
+    # @slash_command(description="Set a daily message that show top 25 guild gains")
+    # @guild_only()
+    # @permissions.require_admin_or_staff()
+    # @command_utils.auto_defer()
+    # @command_utils.statistics("/admin set_daily_gains_lb")
+    # @command_utils.took_too_long()
+    # async def set_daily_gains_lb(self,ctx:ApplicationContext,channel:TextChannel=None):
+    #     if channel is None:
+    #         channel = ctx.channel
+    #     try:
+    #         ch = await self.client.fetch_channel(channel.id)
+    #         await ch.send(content="test message.", delete_after=1)
+    #     except Forbidden:
+    #         return await helpers.send(ctx,content="Bot doesn't have the perms to see/write the channel.")
+    #     message = await channel.send(content="The gains lb will be setted here.")
+    #     if not await Database.insert_gains_leaderboard(channel.id, message.id):
+    #         return await helpers.send(ctx,content="Already set")
+    #     await helpers.send(ctx,content="Done")
 
-    @subcommand("admin guilds")
-    @slash_command(description="Remove the daily message that show top 25 guild gains")
-    @guild_only()
-    @permissions.require_admin_or_staff()
-    @command_utils.auto_defer()
-    @command_utils.statistics("/admin remove_daily_gains_lb")
-    @command_utils.took_too_long()
-    async def remove_daily_gains_lb(self,ctx:ApplicationContext,channel:TextChannel=None):
-        if channel is None:
-            channel = ctx.channel
-        await Database.delete_gains_leaderboard(channel.id)
-        await helpers.send(ctx,content="Done")
+    # @subcommand("admin guilds")
+    # @slash_command(description="Remove the daily message that show top 25 guild gains")
+    # @guild_only()
+    # @permissions.require_admin_or_staff()
+    # @command_utils.auto_defer()
+    # @command_utils.statistics("/admin remove_daily_gains_lb")
+    # @command_utils.took_too_long()
+    # async def remove_daily_gains_lb(self,ctx:ApplicationContext,channel:TextChannel=None):
+    #     if channel is None:
+    #         channel = ctx.channel
+    #     await Database.delete_gains_leaderboard(channel.id)
+    #     await helpers.send(ctx,content="Done")
 
-    @subcommand("admin guilds")
-    @slash_command(description="Set a daily message that show top top 5 members")
-    @guild_only()
-    @permissions.require_linked_server()
-    @permissions.require_admin_or_staff()
-    @command_utils.auto_defer()
-    @command_utils.statistics("/admin set_daily_member_lb")
-    @command_utils.took_too_long()
-    async def set_daily_member_lb(self,ctx:ApplicationContext,channel:TextChannel=None):
-        if channel is None:
-            channel = ctx.channel
-        try:
-            ch = await self.client.fetch_channel(channel.id)
-            await ch.send(content="test message.", delete_after=1)
-        except Forbidden:
-            return await helpers.send(ctx,content="Bot doesn't have the perms to see/write the channel.")
-        message = await channel.send(content="The member lb will be setted here.")
-        if not await Database.insert_lb(channel.id, message.id, await Database.select_server(ctx.guild_id),helpers.get_current_date_game().strftime("%d/%m/%Y")):
-            await helpers.send(ctx,content="Already set")
-            await message.delete()
-            return
-        await helpers.send(ctx,content="Done")
+    # @subcommand("admin guilds")
+    # @slash_command(description="Set a daily message that show top top 5 members")
+    # @guild_only()
+    # @permissions.require_linked_server()
+    # @permissions.require_admin_or_staff()
+    # @command_utils.auto_defer()
+    # @command_utils.statistics("/admin set_daily_member_lb")
+    # @command_utils.took_too_long()
+    # async def set_daily_member_lb(self,ctx:ApplicationContext,channel:TextChannel=None):
+    #     if channel is None:
+    #         channel = ctx.channel
+    #     try:
+    #         ch = await self.client.fetch_channel(channel.id)
+    #         await ch.send(content="test message.", delete_after=1)
+    #     except Forbidden:
+    #         return await helpers.send(ctx,content="Bot doesn't have the perms to see/write the channel.")
+    #     message = await channel.send(content="The member lb will be setted here.")
+    #     if not await Database.insert_lb(channel.id, message.id, await Database.select_server(ctx.guild_id),helpers.get_current_date_game().strftime("%d/%m/%Y")):
+    #         await helpers.send(ctx,content="Already set")
+    #         await message.delete()
+    #         return
+    #     await helpers.send(ctx,content="Done")
 
-    @subcommand("admin guilds")
-    @slash_command(description="Remove the daily message of top 5 members")
-    @guild_only()
-    @permissions.require_admin_or_staff()
-    @command_utils.auto_defer()
-    @command_utils.statistics("/admin remove_daily_member_lb")
-    @command_utils.took_too_long()
-    async def remove_daily_member_lb(self,ctx:ApplicationContext,channel:TextChannel=None):
-        if channel is None:
-            channel = ctx.channel
-        await Database.delete_lb(channel.id)
-        await helpers.send(ctx,content="Done")
+    # @subcommand("admin guilds")
+    # @slash_command(description="Remove the daily message of top 5 members")
+    # @guild_only()
+    # @permissions.require_admin_or_staff()
+    # @command_utils.auto_defer()
+    # @command_utils.statistics("/admin remove_daily_member_lb")
+    # @command_utils.took_too_long()
+    # async def remove_daily_member_lb(self,ctx:ApplicationContext,channel:TextChannel=None):
+    #     if channel is None:
+    #         channel = ctx.channel
+    #     await Database.delete_lb(channel.id)
+    #     await helpers.send(ctx,content="Done")
 
-    @subcommand("admin guilds")
-    @slash_command(description="Set a message that show a leaderboard")
-    @guild_only()
-    @option(name="category",choices=["LEVELS","NPC","PVP","STEPS"])
-    @option(name="timeframe",choices=["Daily","In-Game Weekly","In-Game Monthly"])
-    @command_utils.auto_defer()
-    @permissions.require_linked_server()
-    @permissions.require_admin_or_staff()
-    @command_utils.statistics("/admin set_lb")
-    @command_utils.took_too_long()
-    async def set_lb(self,ctx:ApplicationContext,category:str,timeframe:str,channel:TextChannel=None):
-        if channel is None:
-            channel = ctx.channel
-        try:
-            ch = await self.client.fetch_channel(channel.id)
-            await ch.send(content="test message.", delete_after=1)
-        except Forbidden:
-            return await helpers.send(ctx,content="Bot doesn't have the perms to see/write the channel.")
+    # @subcommand("admin guilds")
+    # @slash_command(description="Set a message that show a leaderboard")
+    # @guild_only()
+    # @option(name="category",choices=["LEVELS","NPC","PVP","STEPS"])
+    # @option(name="timeframe",choices=["Daily","In-Game Weekly","In-Game Monthly"])
+    # @command_utils.auto_defer()
+    # @permissions.require_linked_server()
+    # @permissions.require_admin_or_staff()
+    # @command_utils.statistics("/admin set_lb")
+    # @command_utils.took_too_long()
+    # async def set_lb(self,ctx:ApplicationContext,category:str,timeframe:str,channel:TextChannel=None):
+    #     if channel is None:
+    #         channel = ctx.channel
+    #     try:
+    #         ch = await self.client.fetch_channel(channel.id)
+    #         await ch.send(content="test message.", delete_after=1)
+    #     except Forbidden:
+    #         return await helpers.send(ctx,content="Bot doesn't have the perms to see/write the channel.")
 
-        timestamp = int(helpers.get_date_game(timeframe).timestamp())
+    #     timestamp = int(helpers.get_date_game(timeframe).timestamp())
 
-        message = await channel.send(content="The member lb will be setted here.")
-        if not await Database.insert_cmp_lb(channel.id,message.id,await Database.select_server(ctx.guild_id),timestamp,category,timeframe):
-            await helpers.send(ctx,content="Already set")
-            await message.delete()
-            return
-        await helpers.send(ctx,content="Done")
+    #     message = await channel.send(content="The member lb will be setted here.")
+    #     if not await Database.insert_cmp_lb(channel.id,message.id,await Database.select_server(ctx.guild_id),timestamp,category,timeframe):
+    #         await helpers.send(ctx,content="Already set")
+    #         await message.delete()
+    #         return
+    #     await helpers.send(ctx,content="Done")
 
-    @subcommand("admin guilds")
-    @slash_command(description="Remove the full member leaderboard")
-    @guild_only()
-    @command_utils.auto_defer()
-    @permissions.require_admin_or_staff()
-    @command_utils.statistics("/admin remove_lb")
-    @command_utils.took_too_long()
-    async def remove_lb(self,ctx:ApplicationContext,channel:TextChannel=None):
-        if channel is None:
-            channel = ctx.channel
-        await Database.delete_cmp_lb(channel.id)
-        await helpers.send(ctx,content="Done")
+    # @subcommand("admin guilds")
+    # @slash_command(description="Remove the full member leaderboard")
+    # @guild_only()
+    # @command_utils.auto_defer()
+    # @permissions.require_admin_or_staff()
+    # @command_utils.statistics("/admin remove_lb")
+    # @command_utils.took_too_long()
+    # async def remove_lb(self,ctx:ApplicationContext,channel:TextChannel=None):
+    #     if channel is None:
+    #         channel = ctx.channel
+    #     await Database.delete_cmp_lb(channel.id)
+    #     await helpers.send(ctx,content="Done")
 
 def setup(client: Bot):
     client.add_cog(Admin(client))

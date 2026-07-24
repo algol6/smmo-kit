@@ -19,41 +19,223 @@ class AdminTask(Cog):
     def __init__(self, client) -> None:
         self.client = client
         self.check_montly_reward.start()
-        self.set_new_gain_lb.start()
-        self.update_gains_lb.start()
-        self.create_new_daily_leaderboard.start()
-        self.update_leaderboards.start()
+        #self.set_new_gain_lb.start()
+        #self.update_gains_lb.start()
+        #self.create_new_daily_leaderboard.start()
+        #self.update_leaderboards.start()
         self.activity_check.start()
         self.cleanup_msg.start()
         self.update_season.start()
+        self.update_monitor_system.start()
 
         self.set_up_new_lb.start()
-        self.update_lb.start()
+        self.update_lb2.start()
         # self.eff.start()
         # import asyncio
         # asyncio.run(self.eff())
 
     def cog_unload(self) -> None:
         self.check_montly_reward.cancel()
-        self.set_new_gain_lb.cancel()
-        self.update_gains_lb.cancel()
-        self.create_new_daily_leaderboard.cancel()
-        self.update_leaderboards.cancel()
+        #self.set_new_gain_lb.cancel()
+        #self.update_gains_lb.cancel()
+        #self.create_new_daily_leaderboard.cancel()
+        #self.update_leaderboards.cancel()
         self.activity_check.cancel()
         self.cleanup_msg.cancel()
         self.update_season.cancel()
+        self.update_monitor_system.cancel()
 
         self.set_up_new_lb.cancel()
-        self.update_lb.cancel()
+        self.update_lb2.cancel()
 
-    @loop(time=time(hour=11, minute=59))
+    async def make_emb_monitor_system(self,guild_id:int) -> helpers.Embed | None:
+        guild_mng = GuildMembersManager(guild_id)
+        await guild_mng.fetch_members()
+        req = await Database.select_requirements(guild_id)
+        if not req:
+            return None
+        if not guild_mng.members:
+            return None
+
+        safe_users = {v.smmo_id for v in await Database.select_safe_user(req.guild_id)}
+
+        guild_members = tuple(guild_mng.members.values())
+
+        date = helpers.get_current_date_game() - timedelta(days=req.days)
+        la: list = []
+        lvl: list = []
+        np: list = []
+        pv: list = []
+        st: list = []
+        bulk_stats = await Database.select_user_stat_bulk([m.user_id for m in guild_members], date.year, date.month, date.day)
+        ts = datetime.now().timestamp()
+        for member in guild_members:
+            if member.user_id in safe_users:
+                continue
+            if member.last_activity <= (ts - req.days * 86400):
+                la.append(
+                    {
+                        "name": member.name,
+                        "value": int(member.last_activity),
+                        "id": member.user_id,
+                    }
+                )
+            if member.user_id in bulk_stats:
+                member_stats = bulk_stats[member.user_id]
+            else:
+                member_stats = await Database.select_user_stat(member.user_id, date.year, date.month, date.day)
+            if member_stats is None:
+                continue
+
+            l = member.level - member_stats.level
+            if req.levels != 0 and l <= req.levels + int(req.levels*0.2) and l >= 0:
+                lvl.append(
+                    {
+                        "name": member.name,
+                        "value": l,
+                        "id": member.user_id,
+                        "extra": ":red_circle:" if l < req.levels - int(req.levels*0.2) else ":orange_circle:" if l < req.levels else ":green_circle:"
+                    }
+                )
+
+            n = member.npc_kills - member_stats.npc_kills
+            if req.npc != 0 and n < req.npc + int(req.npc*0.2):
+                np.append(
+                    {
+                        "name": member.name,
+                        "value": n,
+                        "id": member.user_id,
+                        "extra": ":red_circle:" if n < req.npc - int(req.npc*0.2) else ":orange_circle:" if n < req.npc else ":green_circle:"
+                    }
+                )
+
+            p = member.user_kills - member_stats.user_kills
+            if req.pvp != 0 and not member.safe_mode and p < req.pvp + int(req.pvp*0.2):
+                pv.append(
+                    {
+                        "name": member.name,
+                        "value": p,
+                        "id": member.user_id,
+                        "extra": (":red_circle:" if p < req.pvp - int(req.pvp*0.2) else ":orange_circle:" if p < req.pvp else ":green_circle:") + " :crossed_swords:" if member.warrior else ""
+                    }
+                )
+            s = member.steps - member_stats.steps
+            if req.steps != 0 and s < req.steps + int(req.steps*0.2):
+                st.append(
+                    {
+                        "name": member.name,
+                        "value": s,
+                        "id": member.user_id,
+                        "extra": ":red_circle:" if s < req.steps - int(req.steps*0.2) else ":orange_circle:" if s < req.steps else ":green_circle:"
+
+                    }
+                )
+        data =(
+            sorted(la, key=lambda item: item["value"]),
+            sorted(lvl, key=lambda item: item["value"], reverse=True),
+            sorted(np, key=lambda item: item["value"], reverse=True),
+            sorted(pv, key=lambda item: item["value"], reverse=True),
+            sorted(st, key=lambda item: item["value"], reverse=True)
+        )
+        emb = helpers.Embed(
+            title="Monitor System",
+            description=f"From: <t:{int(ts - req.days * 86400)}> to <t:{int(ts)}>"
+        )
+
+        msg = (
+            "`{name:<15.15} [{id:<7}]:` <t:{value}:R>\n",
+            "`{name:<15.15} [{id:<7}]: {value:>7,}` {extra}\n",
+            "Done less than {val:,} Steps in "+ f"{req.days:,} days",
+            "Killed less than {val:,} Users in "+ f"{req.days:,} days",
+            "Destroyed less than {val:,} NPCs in "+ f"{req.days:,} days",
+            "Gained less than {val:,} Levels in "+ f"{req.days:,} days",
+            "Inactive more than {val:,} day/s",
+        )
+        for i in range(4):
+            fmsg = ""
+            title = True
+            for member in data[i]:
+                temp = msg[i != 0].format(**member)
+                if len(temp) + len(fmsg) > 1024:
+                    if title:
+                        match i:
+                            case 0:
+                                m = msg[(i*-1)-1].format(val=req.days)
+                            case 1:
+                                m = msg[(i*-1)-1].format(val=req.levels)
+                            case 2:
+                                m = msg[(i*-1)-1].format(val=req.npc)
+                            case 3:
+                                m = msg[(i*-1)-1].format(val=req.pvp)
+                            case 4:
+                                m = msg[(i*-1)-1].format(val=req.steps)
+                            case _:
+                                m = "Not Found"
+                    else:
+                        m = ""
+
+                    emb.add_field(
+                        name=m,
+                        value=fmsg,
+                        inline=False
+                    )
+                    title = False
+                    fmsg = temp
+                else:
+                    fmsg += temp
+            if len(fmsg) != 0:
+                if title:
+                    match i:
+                        case 0:
+                            m = msg[(i*-1)-1].format(val=req.days)
+                        case 1:
+                            m = msg[(i*-1)-1].format(val=req.levels)
+                        case 2:
+                            m = msg[(i*-1)-1].format(val=req.npc)
+                        case 3:
+                            m = msg[(i*-1)-1].format(val=req.pvp)
+                        case 4:
+                            m = msg[(i*-1)-1].format(val=req.steps)
+                        case _:
+                            m = "Not Found"
+                else:
+                    m = ""
+
+                emb.add_field(
+                    name=m,
+                    value=fmsg,
+                    inline=False
+                )
+        emb.set_footer(text="Users added to safe list are skipped\nUpdated every hour.")
+        return emb
+
+    @loop(hours=1)
+    async def update_monitor_system(self):
+        data = await Database.select_all_monitors_config()
+        for d in data:
+            emb = await self.make_emb_monitor_system(d.guild_id)
+            if not emb:
+                logger.warning("Could not make the embed for the monitor system %s", d.guild_id)
+                continue
+            if not await helpers.get_channel_and_edit(self.client, d.channel_id, d.message_id, embed=emb):
+                logger.info("Removing a monitor system cause: channel not found: %s", d.channel_id)
+                await Database.delete_monitor_config(d.channel_id)
+
+
+    @loop(time=time(hour=12, minute=1))
     async def set_up_new_lb(self):
-        await self.update_complete_lb(False)
         await self.create_new_complete_leaderboard()
+        await self.create_new_gains_lb()
+        await self.create_leaderboard()
 
     @loop(minutes=10)
-    async def update_lb(self):
+    async def update_lb2(self):
+        dt = datetime.now(tz=timezone.utc)
+        if dt.hour == 12 and dt.minute <= 10:
+            return
         await self.update_complete_lb()
+        await self.update_gains_lb_new()
+        await self.update_lb()
 
     async def generic_update_lbs(self, fetch_data, make_emb, skip: bool = True):
         dt = datetime.now(tz=timezone.utc)
@@ -103,9 +285,6 @@ class AdminTask(Cog):
                 continue
 
     async def create_new_complete_leaderboard(self):
-        await sleep(
-            120
-        )  # to have the date to the next day for helpers.get_current_date_game()
         data = await Database.select_all_cmp_lb()
         for d in data:
             timestamp = int(helpers.get_date_game(d.timeframe).timestamp())
@@ -149,13 +328,116 @@ class AdminTask(Cog):
             if not emb:
                 logger.warning("Could not make the embed for the guild %s", d.guild_id)
                 continue
-            if not await helpers.get_channel_and_edit(
-                self.client, d.channel_id, d.message_id, embed=emb
-            ):
-                logger.info(
-                    "Removing a member lb cause: channel not found: %s", d.channel_id
-                )
+            if not await helpers.get_channel_and_edit(self.client, d.channel_id, d.message_id, embed=emb):
+                logger.info("Removing a member lb cause: channel not found: %s", d.channel_id)
                 await Database.delete_cmp_lb(d.channel_id)
+
+    async def create_new_gains_lb(self):
+        data = await Database.select_all_gains_leaderboard()
+        for d in data:
+            timestamp = int(helpers.get_date_game(d.timeframe).timestamp())
+            if d.timestamp == timestamp:
+                continue
+            try:
+                channel = await self.client.fetch_channel(d.channel_id)
+                emb = helpers.Embed(title="Loading leaderboard...")
+                message = await channel.send(embed=emb)
+                await Database.update_gains_leaderboard(
+                    channel.id, timestamp, d.message_id, message.id
+                )
+            except NotFound:
+                logger.info("Channel not found (create_new_complete_leaderboard)")
+                logger.info(
+                    "Removing a gains lb cause: channel not found: %s", d.channel_id
+                )
+                await Database.delete_gains_leaderboard(d.channel_id)
+                continue
+            except Forbidden:
+                logger.info(
+                    "Removing a gains lb cause: channel forbidden: %s", d.channel_id
+                )
+                await Database.delete_gains_leaderboard(d.channel_id)
+                continue
+            except HTTPException:
+                logger.warning("Internet fault")
+                continue
+
+    async def update_gains_lb_new(self, skip:bool = True):
+        embs = (
+            await helpers.make_gains_emb(helpers.Timeframe.Daily),
+            await helpers.make_gains_emb(helpers.Timeframe.IGWeekly),
+            await helpers.make_gains_emb(helpers.Timeframe.IGMonthly)
+        )
+        if all(x is None for x in embs):
+            return
+        data = await Database.select_all_gains_leaderboard()
+        emb = None
+        for d in data:
+            timestamp = int(helpers.get_date_game(d.timeframe).timestamp())
+            if skip and timestamp != d.timestamp:
+                continue
+            match d.timeframe:
+                case helpers.Timeframe.Daily:
+                    emb = embs[0]
+                case helpers.Timeframe.IGWeekly:
+                    emb = embs[1]
+                case helpers.Timeframe.IGMonthly:
+                    emb = embs[2]
+            if not await helpers.get_channel_and_edit(self.client, d.channel_id, d.message_id, embed=emb):
+                logger.info("Removing a gains lb cause: channel not found: %s", d.channel_id)
+                await Database.delete_gains_leaderboard(d.channel_id)
+
+    async def create_leaderboard(self):
+        data = await Database.select_all_lb()
+        for d in data:
+            timestamp = int(helpers.get_date_game(d.timeframe).timestamp())
+            if d.timestamp == timestamp:
+                continue
+            try:
+                channel = await self.client.fetch_channel(d.channel_id)
+                emb = helpers.Embed(title="Loading leaderboard...")
+                message = await channel.send(embed=emb)
+                await Database.update_lb(
+                    channel.id,
+                    timestamp,
+                    message.id,
+                    d.message_id
+                )
+            except NotFound:
+                logger.info("Channel not found (create_new_complete_leaderboard)")
+                logger.info(
+                    "Removing a gains lb cause: channel not found: %s", d.channel_id
+                )
+                await Database.delete_lb(d.channel_id)
+                continue
+            except Forbidden:
+                logger.info(
+                    "Removing a gains lb cause: channel forbidden: %s", d.channel_id
+                )
+                await Database.delete_lb(d.channel_id)
+                continue
+            except HTTPException:
+                logger.warning("Internet fault")
+                continue
+
+    async def update_lb(self,skip:bool = True):
+        dt = datetime.now(tz=timezone.utc)
+        if skip and dt.hour == 12 and dt.minute <= 30:
+            return
+        data = await Database.select_all_lb()
+        emb = None
+        for d in data:
+            date = helpers.get_date_game(d.timeframe)
+            timestamp = int(date.timestamp())
+            if skip and timestamp != d.timestamp:
+                continue
+
+            emb = await helpers.make_members_lb(
+                d.guild_id, date, task=True
+            )
+            if not await helpers.get_channel_and_edit(self.client, d.channel_id, d.message_id, embed=emb):
+                logger.info("Removing a gains lb cause: channel not found: %s", d.channel_id)
+                await Database.delete_lb(d.channel_id)
 
     async def make_complete_lb_emb(self, g_id: int, category: str, timestamp: int):
         try:
