@@ -1,14 +1,12 @@
-from discord import Bot,ApplicationContext,Forbidden,ButtonStyle,InteractionContextType,IntegrationType,TextChannel,HTTPException,InvalidData, NotFound, Forbidden, Embed, Member, Color,AutocompleteContext,MISSING
+from discord import Bot,ApplicationContext,Forbidden,ButtonStyle,TextChannel,HTTPException,InvalidData, NotFound, Embed, Member, Color,AutocompleteContext,MISSING
 from discord.abc import GuildChannel
-from discord.commands import SlashCommand, SlashCommandGroup
 from discord.ui import View, Button
 from datetime import datetime, timezone, timedelta
 
-from bot.discord_cmd.modules.trial._tasks import TrialTask
+from bot.database import Database
 from bot.discord_cmd.helpers.logger import logger
 from bot.api.model._player_info import PlayerInfo
 from bot.api import SMMOApi, ApiError
-from bot.database import Database, TrialDatabase
 from bot.database.model import GuildStats
 from bot.core._guild_members import GuildMembersManager
 
@@ -17,12 +15,22 @@ from colorthief import ColorThief
 from PIL import Image, ImageSequence
 from itertools import chain
 from urllib.parse import urlparse
+from enum import StrEnum
 
 import re
-import os
 import ast
 import operator
 import requests
+
+
+class Timeframe(StrEnum):
+    Daily = "Daily"
+    IGWeekly = "In-Game Weekly"
+    IGMonthly = "In-Game Monthly"
+    Weekly = "Weekly"
+    Monthly = "Monthly"
+    Yesterday = "Yesterday"
+    PastWeek = "Past 7 Days"
 
 
 
@@ -37,7 +45,6 @@ class LinksUrlButton(View):
                 style=ButtonStyle.primary,
                 url=url
             ))
-    
 
 def get_emb_role_message(conf,user:str,role:str):
     emb = Embed(title=role)
@@ -62,7 +69,7 @@ def get_emb_role_message(conf,user:str,role:str):
             name="",
             value=fmsg
         )
-    
+
     return emb
 
 
@@ -86,7 +93,7 @@ async def give_join_roles(member,roles):
         except Forbidden:
             logger.warning("No perms to give the role")
         except HTTPException:
-            logger.waring("Can't give role, internet fault")
+            logger.warning("Can't give role, internet fault")
 
 def eval_expr(expr, variables):
     """USE THE OTHER ONE"""
@@ -141,7 +148,7 @@ def is_number(s) -> bool:
         float(s)
         return True
     except ValueError:
-        return False    
+        return False
 
 def is_valid_url(url):
     try:
@@ -150,7 +157,7 @@ def is_valid_url(url):
         return all([result.scheme, result.netloc])
     except:
         return False
-    
+
 def gen_is_empty(gen):
     try:
         first = next(gen)
@@ -164,7 +171,7 @@ async def get_war_guild(ctx:AutocompleteContext):
     guild_id = await Database.select_server(ctx.interaction.guild_id)
     global wars_list
     if 'wars_list' not in globals():
-        wars_list = {} 
+        wars_list = {}
     if str(guild_id) not in wars_list or datetime.now().timestamp() - wars_list[str(guild_id)]["time"] >= 300:
         try:
             wars_list[str(guild_id)] = {"time":datetime.now().timestamp(),"wars":tuple(await SMMOApi.get_guild_wars(guild_id, 1)),"autocomplete":[]}
@@ -179,7 +186,7 @@ async def get_war_guild(ctx:AutocompleteContext):
                 wars_list[str(guild_id)]["autocomplete"].append([f"{war.guild_1['name']} - {war.guild_1['id']}",war.guild_2["kills"]])
         # wars_list[str(guild_id)]["autocomplete"] = sorted(wars_list[str(guild_id)]["autocomplete"],key=lambda item: item[1],reverse=True)
     try:
-        return sorted([i[0] for i in wars_list[str(guild_id)]["autocomplete"] if ctx.value.lower() in i[0].lower()]) 
+        return sorted([i[0] for i in wars_list[str(guild_id)]["autocomplete"] if ctx.value.lower() in i[0].lower()])
     except:
         return []
 
@@ -202,10 +209,10 @@ async def make_wars_emb(guild, c, v, g2, war_xp,bo:bool|None = None) -> str:
         # wars_ongoing = await SMMOApi.get_guild_wars(guild.id, 1)
         global wars_list
         if 'wars_list' not in globals():
-            wars_list = {} 
+            wars_list = {}
         if str(guild.id) not in wars_list or datetime.now().timestamp() - wars_list[str(guild.id)]["time"] >= 300:
             wars_list[str(guild.id)] = {"time":datetime.now().timestamp(),"wars":tuple(await SMMOApi.get_guild_wars(guild.id, 1))}
-        
+
         var: list[int] = [0,0,0,0,0,0,0]
         earnings: list[int] = [0,0,0,0,0,0]
         for w in wars_list[str(guild.id)]["wars"]:
@@ -224,8 +231,8 @@ async def make_wars_emb(guild, c, v, g2, war_xp,bo:bool|None = None) -> str:
                     if war_xp:
                         guild_2 = await SMMOApi.get_guild_info(vs_guild)
                         earnings[i] += max(int(guild_2.current_season_exp * MULTIPLIER), BASE_XP) + ((MAX_KILLS - w.guild_1["kills"]) * 50)
-                        
-            
+
+
         if len(wars_list[str(guild.id)]) != 0:
             msg = (f"{msg}*War that is about to **win***:\n"
                     f"> War with more than **{MAX_KILLS-100}** kills: {var[0]} {f"(+ {earnings[0]:,} gxp)" if war_xp else ''}\n"
@@ -241,10 +248,10 @@ async def make_wars_emb(guild, c, v, g2, war_xp,bo:bool|None = None) -> str:
     if bo is not None:
         msg = f"{msg}XP diff betweeen **{v.guild['name']}-{guild.name}**: {xp - v.experience:,}\n"
     return msg
-    
 
 
-async def make_members_lb(g_id,lb_date,current_date,task:bool=False,reverse:bool=False,live_stats:bool=True):
+
+async def make_members_lb(g_id,date,task:bool=False,reverse:bool=False,live_stats:bool=True,to_date:str="Daily"):
     try:
         guild = await SMMOApi.get_guild_info(g_id)
     except ApiError:
@@ -252,7 +259,7 @@ async def make_members_lb(g_id,lb_date,current_date,task:bool=False,reverse:bool
     if not guild:
         logger.warning("Could not retrive guild data from API")
         return None
-    date = get_date_game(lb_date)
+    current_date = get_date_game(to_date)
     season = await Database.select_last_season()
     if season is None:
         return
@@ -301,14 +308,14 @@ async def make_members_lb(g_id,lb_date,current_date,task:bool=False,reverse:bool
             total[1] += m2.npc_kills - m1.npc_kills
             total[2] += m2.user_kills - m1.user_kills
             total[3] += m2.level - m1.level
-    
+
     if len(var) == 0:
         #logger.warning("var empty: member data could not be processed")
         return None
     if live_stats:
         current_date = get_date_game("Yesterday")
     emb = Embed(
-        title=f"Members leaderboard",
+        title="Members leaderboard",
         description=f"**Guild**: {guild.name}\n"
                     f"**Stats**: from <t:{int(current_date.timestamp())}> - <t:{int(current_date.timestamp() + 86400)}>\n"
                     f"**Last update**: <t:{int(datetime.now().timestamp())}:R>\n"
@@ -331,7 +338,7 @@ async def make_members_lb(g_id,lb_date,current_date,task:bool=False,reverse:bool
         emb.set_footer(text="Updated every 10 min")
     return emb
 
-async def make_gains_emb():
+async def make_gains_emb(timeframe:str="Daily"):
     season = await Database.select_last_season()
     try:
         is_empty,season_lb = gen_is_empty(await SMMOApi.get_guild_season_leaderboard(season.id))
@@ -339,9 +346,10 @@ async def make_gains_emb():
         return
     if is_empty:
             return
+    date = get_date_game(timeframe)
     emb = Embed(
-            title="Daily Guilds Gains",
-            description=f"**Stats**: since <t:{int((get_current_date_game()).timestamp())}>\n"
+            title=f"{timeframe} Guilds Gains",
+            description=f"**Stats**: since <t:{int(date.timestamp())}>\n"
                         f"**{season.name}**\n"
                         f"**Season Start**: <t:{int(datetime.fromisoformat(season.starts_at[:-1]).timestamp())}:R> (<t:{int(datetime.fromisoformat(season.starts_at[:-1]).timestamp())}>)\n"
                         f"**Season End**: <t:{int(datetime.fromisoformat(season.ends_at[:-1]).timestamp())}:R> (<t:{int(datetime.fromisoformat(season.ends_at[:-1]).timestamp())}>)\n"
@@ -349,7 +357,6 @@ async def make_gains_emb():
         )
     msg: str = ""
     TITLES = ("Celestial", "Legendary", "Epic", "Elite", "Rare")
-    date = get_current_date_game()
     for title in TITLES:
         for _ in range(5):
             g = next(season_lb)
@@ -421,7 +428,7 @@ async def send(ctx,content:str="",embed:Embed=MISSING,view=MISSING,file=MISSING,
     except Forbidden:
         logger.exception("Forbidden, i can't send messages there")
     except HTTPException:
-        logger.exception("Internet fault not mine")
+        logger.exception("Internet fault not mine/Not Found")
     except ValueError:
         logger.exception("Text in the embed too long")
     except NotFound:
@@ -441,29 +448,31 @@ async def edit(ctx,content:str=None,embed:Embed=MISSING)->None:
         logger.exception("Text in the embed too long")
     except NotFound:
         logger.exception("Not found: where i send the message?")
-        
+
 
 def get_date_game(tf:str) -> datetime:
     date = get_current_date_game()
     match tf:
-        case "Past 7 Days":
+        case Timeframe.PastWeek:
             return date - timedelta(weeks=1)
-        case "Yesterday":
+        case Timeframe.Yesterday:
             return date - timedelta(days=1)
-        case "Daily":
+        case Timeframe.Daily:
             return date
-        case "Monthly":
+        case Timeframe.Weekly:
+            return date - timedelta(weeks=1)
+        case Timeframe.Monthly:
             return date - timedelta(weeks=4)
-        case"In-Game Weekly":
+        case Timeframe.IGWeekly:
             return date - timedelta(days=date.weekday())
-        case "In-Game Monthly":
+        case Timeframe.IGMonthly:
             return date.replace(day=28) if date.day > 28 or (date.day == 28 and date.hour >= 12) else (date - timedelta(weeks=4)).replace(day=28)
         case _:
             try:
                 return datetime.strptime(tf,"%d/%m/%Y").replace(tzinfo=timezone.utc).replace(hour=12)
             except ValueError:
                 logger.exception("when parsing data")
-                return None
+                return date
 
 def get_current_date_game() -> datetime:
     da = datetime.now(tz=timezone.utc)
@@ -475,9 +484,10 @@ def get_current_date_game() -> datetime:
     return da
 
 async def get_user(ctx:ApplicationContext|None=None,smmo_id:int|None=None,user:Member|None=None) -> PlayerInfo | None:
+    linked:bool = False
     if ctx or user:
         u_id = user.id if user else ctx.user.id
-        linked:bool = True
+        linked = True
         bot_user = await Database.select_user_discord(u_id)
         if bot_user is None:
             linked = False
@@ -536,21 +546,21 @@ def resize_gif2(input_path, output_path, scale_factor):
         frames = []
         durations = []
         disposal = im.info.get('disposal', 2)
-        
+
         canvas = Image.new("RGBA", im.size)
-        
+
         for frame in ImageSequence.Iterator(im):
             durations.append(frame.info.get('duration', 100))
-            
+
             if disposal == 2:
                 canvas.paste((0, 0, 0, 0), [0, 0, im.size[0], im.size[1]])
 
             frame_rgba = frame.convert("RGBA")
             canvas.alpha_composite(frame_rgba)
-            
+
             new_size = (int(im.size[0] * scale_factor), int(im.size[1] * scale_factor))
             resized_frame = canvas.resize(new_size, Image.NEAREST)
-            
+
             frames.append(resized_frame.convert("RGBA"))
 
         if frames:
@@ -571,7 +581,7 @@ def human_format(x, pos):
         return f'{x/1_000:.1f}K' if x % 1_000 else f'{int(x/1_000)}K'
     else:
         return str(int(x))
-    
+
 def formattime(time: int) -> str:
         if time <= 0:
             return '0m'
@@ -579,11 +589,15 @@ def formattime(time: int) -> str:
         weeks, remaining_time = divmod(time, 60 * 24 * 7)
         days, remaining_time = divmod(remaining_time, 60 * 24)
         hours, minutes = divmod(remaining_time, 60)
-        
+
         components = []
-        if weeks: components.append(f"{int(weeks)}w")
-        if days: components.append(f"{int(days)}d")
-        if hours: components.append(f"{int(hours)}h")
-        if minutes: components.append(f"{int(minutes)}m")
-        
+        if weeks:
+            components.append(f"{int(weeks)}w")
+        if days:
+            components.append(f"{int(days)}d")
+        if hours:
+            components.append(f"{int(hours)}h")
+        if minutes:
+            components.append(f"{int(minutes)}m")
+
         return ''.join(components) or '0m'
