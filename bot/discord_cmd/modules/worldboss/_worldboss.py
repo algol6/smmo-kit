@@ -53,8 +53,8 @@ class Worldboss(Cog):
         if channel is None:
             channel = ctx.channel
         await Database.delete_wb_message(channel.id)
-        await helpers.send(ctx,content="Message removed")  
-        
+        await helpers.send(ctx,content="Message removed")
+
     @subcommand("admin worldboss")
     @slash_command(description="Remove the ping for world boss")
     @guild_only()
@@ -81,11 +81,11 @@ class Worldboss(Cog):
         if channel is None:
             channel = ctx.channel
         #await helpers.get_channel_and_edit(self.client,channel.id,delete_after=1)
-        
-        if not await Database.insert_wb_message(channel.id):
+
+        if not await Database.insert_wb_message(channel.id,ctx.guild_id):
             return await helpers.send(ctx,content="Message already set up in this channel")
         await helpers.send(ctx,content="Setup done")
-     
+
     @subcommand("admin worldboss")
     @slash_command(description="Setup the ping for world boss")
     @guild_only()
@@ -94,13 +94,13 @@ class Worldboss(Cog):
     @permissions.require_admin_or_staff()
     @command_utils.auto_defer()
     @command_utils.statistics("/admin worldboss set_ping")
-    @command_utils.took_too_long()    
+    @command_utils.took_too_long()
     async def set_ping(self,ctx:ApplicationContext,role:Role,minutes_before:int,channel:TextChannel=None,god_only:str="No") -> None:
         if channel is None:
             channel = ctx.channel
         #await helpers.get_channel_and_edit(self.client,channel.id,delete_after=1)
 
-        if not await Database.insert_wb_notification(channel.id, role.id, minutes_before * 60, god_only=="Yes"):
+        if not await Database.insert_wb_notification(channel.id, role.id, minutes_before * 60, god_only=="Yes",ctx.guild_id):
             return await helpers.send(ctx,content="Notification already set up in this channel")
         await helpers.send(ctx,content="Notifications has been set up")
 
