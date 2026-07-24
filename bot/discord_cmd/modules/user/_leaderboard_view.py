@@ -1,5 +1,5 @@
 import discord
-from bot.discord_cmd.helpers import helpers 
+from bot.discord_cmd.helpers import helpers
 
 class LeaderboardView(discord.ui.View):
     def __init__(self):
@@ -73,21 +73,21 @@ class LeaderboardView(discord.ui.View):
             if position<=10 and position == i:
                 msgs[-1] = msgs[-1] + " :arrow_left:"
         return position,your_value,msgs
-    
+
     async def create_embed(self):
         your_pos,your_val,msg = self.generate_msg()
-        desc = f"You are placed #{your_pos}/{len(self.data[self.type])}\nYour stat: {your_val:,}" if your_pos > 10 else ""
+        desc = f"You are placed #{your_pos:,}/{len(self.data[self.type]):,}\nYour stat: {your_val:,}" if your_pos > 10 else ""
         emb = helpers.Embed(title=f"{self.TITLE[self.type]} Leaderboard",description=desc)
-        emb.add_field(name="", 
-                      value="\n".join(msg[:5]), 
+        emb.add_field(name="",
+                      value="\n".join(msg[:5]),
                       inline=False)
-        emb.add_field(name="", 
-                      value="\n".join(msg[5:]), 
+        emb.add_field(name="",
+                      value="\n".join(msg[5:]),
                       inline=False)
         if your_pos != 0:
-            emb.set_footer(text=f"Data limited to the database")
+            emb.set_footer(text="Data limited to the database")
         return emb
-    
+
     @discord.ui.button(label="Steps", emoji="🥾", style=discord.ButtonStyle.primary)
     async def step_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         if interaction.user.id != self.ctx.user.id:
@@ -119,4 +119,3 @@ class LeaderboardView(discord.ui.View):
         await interaction.response.defer()
         self.type = 3
         await self.update_message()
-    
