@@ -26,7 +26,7 @@ class Diamonds(Cog):
             emb.add_field(name="",value=f"**Seller**: [{entry.seller.name}](https://simple-mmo.com/user/view/{entry.seller.id})\n**Price**: {entry.price_per_diamond:,} :coin:\n**Amount**: {entry.diamonds_remaining:,}/{entry.diamond_amount_at_start:,} :gem:",inline=False)
         await helpers.send(ctx,embed=emb,view=MarketUrlButton())
 
-    
+
     @subcommand("admin diamonds")
     @slash_command(description="Set the pinging when the price goes under x gold")
     @guild_only()
@@ -42,8 +42,8 @@ class Diamonds(Cog):
             await ch.send(content="test message.", delete_after=1)
         except Forbidden:
             return await helpers.send(ctx,content="Bot doesn't have the perms to see/write the channel.")
-        if not await Database.insert_diamonds(role.id,channel.id,min_price):
-            return await helpers(content="Diamond ping already setted.")
+        if not await Database.insert_diamonds(role.id,channel.id,min_price,ctx.guild_id):
+            return await helpers.send(ctx,content="Diamond ping already setted.")
         await helpers.send(ctx,content="Diamond market ping has been set up")
 
     @subcommand("admin diamonds")
@@ -53,7 +53,7 @@ class Diamonds(Cog):
     @command_utils.auto_defer()
     @command_utils.statistics("/admin diamonds remove_ping")
     @command_utils.took_too_long()
-    async def remove_ping(self,ctx:ApplicationContext,channel:TextChannel=None):
+    async def remove_ping(self,ctx:ApplicationContext,channel:TextChannel|None=None):
         if channel is None:
             channel = ctx.channel
         await Database.delete_diamonds(channel.id)
