@@ -1,5 +1,6 @@
 from discord import ApplicationContext, slash_command, guild_only,option,TextChannel,Forbidden,HTTPException
 from discord.ext import commands
+from numpy import delete
 from pycord.multicog import subcommand
 
 from bot.api import SMMOApi
@@ -19,7 +20,7 @@ class Utility(commands.Cog):
 
     def make_vault_emb(self, vault) -> helpers.Embed:
         ct = vault.code.split(":")
-        emb = helpers.Embed(title="Daily Vault Code", 
+        emb = helpers.Embed(title="Daily Vault Code",
                     description='Go to "Town > Vault" to use the code',
                     image="https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExNDFob2VteW92d3FzbHF5ZHNxMDc3Y2prMnJic2dmN3BudmRhZ2lyYiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/I7Il0qBnjThAI/giphy.gif")
         match len(ct[0]):
@@ -47,7 +48,7 @@ class Utility(commands.Cog):
                     )
         if vault.note is not None:
             emb.add_field(name="", value=vault.note, inline=False)
-        
+
         return emb
 
     async def share_vault_code(self):
@@ -82,7 +83,7 @@ class Utility(commands.Cog):
             if v.role_id is not None:
                 await helpers.get_channel_and_edit(self.client,v.channel_id,content=f"<@&{v.role_id}> Here the Vault Code!",delete_after=del_after)
             await Database.update_valutmsg(1,v.channel_id,vault.code,msg.id)
-    
+
     @slash_command(description="Show or set vault code")
     @guild_only()
     @command_utils.auto_defer()
@@ -141,25 +142,27 @@ class Utility(commands.Cog):
         player = await helpers.get_user(ctx)
         if player is None:
             return
-            
+
         if starting_level is not None:
             player.level = starting_level
             player.exp = (50 * (player.level-1 * (player.level))//2)
 
         if target_level and player.level >= target_level:
-            return await helpers.send(ctx,"The level that you want reach has to be higher than your actual level. -_-")
+            return await helpers.send(ctx,"The level that you want reach has to be higher than your actual level. -_-",delete_after=60)
 
         npc_to_kill:int = 0
         final_xp_mult = BASE_XP_MULT * TIER_MULT * (1 + (boost_percentage / 100))
-        
-        level = player.level
-        xp_for_current_level = (50 * (player.level-1 * (player.level))//2)
-        level_progress = (player.exp / xp_for_current_level) if xp_for_current_level != 0 else 0
-        k_x_l = final_xp_mult / 50.0 
 
-        if npc == 0:
+        level = player.level
+        if level is None:
+            return await helpers.send(ctx,"Could not get the level.",delete_after=60)
+        xp_for_current_level = (50 * (level-1 * (level))//2)
+        level_progress = (player.exp / xp_for_current_level) if xp_for_current_level != 0 else 0
+        k_x_l = final_xp_mult / 50.0
+
+        if npc == 0 and target_level is not None:
             lvl_needed = (target_level - level) - level_progress
-            lvl_needed = max(0, lvl_needed) 
+            lvl_needed = max(0, lvl_needed)
             npc_to_kill = ceil(lvl_needed / k_x_l)
             final_level = target_level
         else:
@@ -167,10 +170,10 @@ class Utility(commands.Cog):
             total_progress = level_progress + (npc_to_kill * k_x_l)
             lvl_gained = floor(total_progress)
             final_level = level + lvl_gained
-            
 
-        money_needed = npc_to_kill * NPC_COST    
-        lvl_gained = final_level - player.level
+
+        money_needed = npc_to_kill * NPC_COST
+        lvl_gained = final_level - level
 
         regen_time:str = helpers.formattime(npc_to_kill*5)
         split_time = findall(r'\d+[a-zA-Z]', regen_time)
@@ -182,7 +185,7 @@ class Utility(commands.Cog):
                 days += int(i.split("d")[0])
         moes_p = MOE_PLEB * (days if npc_to_kill > MOE_PLEB else 0)
         moes = MOE * (days if npc_to_kill > MOE else 0)
-        
+
         msg:str = (
             f"**NPC generated**: {npc_to_kill:,} :skull:\n"
             f"**Cost**: {money_needed:,} :coin: [{int(money_needed*1.035):,} :bank:]\n"
@@ -197,7 +200,7 @@ class Utility(commands.Cog):
                             "With {ep} Ep, if There is a double sale it's worth to refill {refill_ep} EP instead\n")
             diamon_needed = [0, 0, 0]
             refills = ceil(npc_to_kill / energy_point)
-            
+
             thresholds = (
                 # max energy, cost (no sale, sale and double), min energy to be worth a refill, prev max energy
                 (10, [5, 4, 3],None,None),
@@ -213,6 +216,8 @@ class Utility(commands.Cog):
             for threshold, dias_cost, min_ep,refill_ep in thresholds:
                 if energy_point <= threshold:
                     diamon_needed = [refills * value for value in dias_cost]
+                    if min_ep is None:
+                        continue
                     if energy_point < min_ep[0]:
                         msg2 += STR_TEMPLATE[0].format(ep=energy_point, refill_ep=refill_ep)
                     if energy_point < min_ep[1]:
@@ -254,7 +259,7 @@ class Utility(commands.Cog):
 
         if current_lvl >= lvl_to_reach:
             return await helpers.send(ctx,content=f"Your current level is higher than the level you are tring to reach. Your level: {current_lvl}")
-        
+
         max_xp:int = 50 * ((lvl_to_reach - 1) * lvl_to_reach) // 2
         xp_needed:int = max_xp - current_lvl_xp
 
@@ -271,7 +276,7 @@ class Utility(commands.Cog):
             "Legendary":(55,25),
             "Celestial":(70,35)
         }
-        
+
         for name,values in rarity.items():
             craft_needed:int = ceil(xp_needed/values[0])
             embed.add_field(name=f"{name} mats",
