@@ -40,7 +40,8 @@ client.load_extension("bot.discord_cmd.modules.trial")
 @permissions.require_owner()
 @command_utils.took_too_long()
 async def test(ctx:ApplicationContext):
-    return
+
+    await ctx.followup.send("NOTHING DONE !")
 
 @client.event
 async def on_application_command_error(ctx: ApplicationContext, error: DiscordException):
@@ -114,7 +115,11 @@ async def on_member_update(before,after):
             view = helpers.LinksUrlButton(links)
         try:
             ch = await client.fetch_channel(config[role.id].channel_id)
-            msg = await ch.send(content=after.mention,embed=helpers.get_emb_role_message(config[role.id],after.mention,role.name),view=view)
+            msg = await ch.send(
+                content=after.mention,
+                embed=helpers.get_emb_role_message(config[role.id],after.mention,role.name),
+                view=view
+            )
             await msg.edit(content="")
         except Forbidden:
             continue
