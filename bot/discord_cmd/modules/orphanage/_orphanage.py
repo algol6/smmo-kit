@@ -42,10 +42,10 @@ class Orphanage(commands.Cog):
                 t = 0
         if t == 0:
             for i in range(1,4):
-                if not await Database.insert_orphanage(channel.id,None,role.id,i,active=0):
+                if not await Database.insert_orphanage(channel.id,None,role.id,i,0,ctx.guild_id):
                     return await helpers.send(ctx,content="This is already configured")
             return await helpers.send(ctx,content=f"Orphanage tier {tier} set up.")
-        if not await Database.insert_orphanage(channel.id,None,role.id,t,active=0):
+        if not await Database.insert_orphanage(channel.id,None,role.id,t,0,ctx.guild_id):
             return await helpers.send(ctx,content="This is already configured")
         await helpers.send(ctx,content=f"Orphanage tier {tier} set up.")
 
@@ -60,8 +60,8 @@ class Orphanage(commands.Cog):
         if channel is None:
             channel = ctx.channel
         await Database.delete_orphanage(channel.id)
-        await helpers.send(ctx,content=f"Orphanage notify removed.")
-    
+        await helpers.send(ctx,content="Orphanage notify removed.")
+
 
     @slash_command(description="Show the current status of orphanage")
     @guild_only()
@@ -79,7 +79,7 @@ class Orphanage(commands.Cog):
                           value=msg, inline=False)
 
         await ctx.followup.send(embed=emb)
-    
+
 def setup(client:Bot):
     client.add_cog(Orphanage(client))
     client.add_cog(OrphanageTask(client))
