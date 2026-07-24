@@ -23,7 +23,7 @@ class SMMOApi:
     async def _request(endpoint:str,api_key:str|None=None) -> dict | list | None:
         async with sem:
             if SMMOApi.rate_limit_remaining <= 0 and SMMOApi._first_request_time > 0.0:
-                await sleep(60)
+                await sleep(61)
                 SMMOApi._first_request_time = 0.0
             async with ClientSession() as session:
                 async with session.post(
@@ -34,14 +34,18 @@ class SMMOApi:
                 ) as resp:
                     if not resp.ok:
                         import re
-                        result = re.search('<title>(.*)</title>', await resp.text())
+                        response = await resp.text()
+                        result = re.search('<title>(.*)</title>', response)
+                        result2 = re.search('<p(.*)</p>', response)
                         if result:
                             result=result.group(1)
-                        ## TODO: return a message error to let know is a server problem
                         if not result:
-                            result = await resp.text()
+                            result = response
                         logger.error(result)
+                        if result2:
+                            logger.error(result2.group(1).split(">")[1])
                         raise ApiError(result)
+                        return None
                     if "X-RateLimit-Remaining" in resp.headers:
                         SMMOApi.rate_limit_remaining = int(resp.headers.get("X-RateLimit-Remaining"))
                         if SMMOApi._first_request_time == 0.0:
@@ -100,7 +104,6 @@ class SMMOApi:
         resp = await SMMOApi._request(f"v1/player/info/{player_id}")
         if resp is not None:
             return model.PlayerInfo(**resp)
-
         return None
 
     @staticmethod
