@@ -26,6 +26,7 @@ class ValutMsg:
     status:int
     message_id: int
     code: str
+    server_id: int
 
 @dataclass
 class BestStats:
@@ -37,4 +38,3 @@ class BestStats:
     steps:int
     npc:int
     pvp:int
-    

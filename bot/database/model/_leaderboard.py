@@ -5,4 +5,6 @@ class Leaderboard:
     channel_id: int
     message_id: int
     guild_id: int
-    date: str
+    server_id: int
+    timeframe: str
+    timestamp: int

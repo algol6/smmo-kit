@@ -8,11 +8,13 @@ class WorldbossNotification:
         seconds_before: int
         god: int
         boss_id: int
+        server_id: int
 
 @dataclass
 class WorldbossMessage:
         channel_id: int
         boss_id: int
+        server_id: int
 
 @dataclass
 class WorldBoss:

@@ -56,6 +56,9 @@ class SafeUser:
 class GainsLeaderboard:
     channel_id: int
     message_id: int
+    server_id : int
+    timeframe: str
+    timestamp: int
 
 @dataclass
 class Raid:
@@ -86,9 +89,11 @@ class CompleteLb:
     timestamp: int
     category:str
     timeframe: str
+    server_id: int
 
 @dataclass
 class MonitorSystem:
     server_id: int
     channel_id: int
     guild_id: int
+    message_id:int

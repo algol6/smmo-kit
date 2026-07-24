@@ -7,3 +7,4 @@ class Orphanage:
     tier: int
     active: int
     message_id: int
+    server_id: int
