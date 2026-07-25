@@ -206,10 +206,10 @@ class AdminTask(Cog):
                     value=fmsg,
                     inline=False
                 )
-        emb.set_footer(text="Users added to safe list are skipped\nUpdated every hour.")
+        emb.set_footer(text="Users added to safe list are skipped\nUpdated every half hour.")
         return emb
 
-    @loop(hours=1)
+    @loop(minutes=30)
     async def update_monitor_system(self):
         data = await Database.select_all_monitors_config()
         for d in data:
