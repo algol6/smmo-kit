@@ -9,10 +9,10 @@ class RequirementsModal(discord.ui.Modal):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.add_item(discord.ui.InputText(label="Days",placeholder="Write just the number. ex: 7"))
-        self.add_item(discord.ui.InputText(label="Steps",placeholder="Leave empty to skip"))
-        self.add_item(discord.ui.InputText(label="NPCs",placeholder="Leave empty to skip."))
-        self.add_item(discord.ui.InputText(label="PVPs",placeholder="Leave empty to skip."))
-        self.add_item(discord.ui.InputText(label="Levels",placeholder="Leave empty to skip."))
+        self.add_item(discord.ui.InputText(label="Steps",placeholder="Leave empty to skip",required=False))
+        self.add_item(discord.ui.InputText(label="NPCs",placeholder="Leave empty to skip.",required=False))
+        self.add_item(discord.ui.InputText(label="PVPs",placeholder="Leave empty to skip.",required=False))
+        self.add_item(discord.ui.InputText(label="Levels",placeholder="Leave empty to skip.",required=False))
         self.days = 0
         self.steps = 0
         self.npc = 0
@@ -39,7 +39,7 @@ class ConfMonitor(discord.ui.View):
         self.gid = guild_id
         self.client = client
         self.ch = None
-        self.conf = None
+        self.conf = (None,None)
 
         self.TEMPLATE = (
             "Monitors Set:",
@@ -61,9 +61,9 @@ class ConfMonitor(discord.ui.View):
 
     def update_btn(self):
         self.confirm_button.disabled = self.ch is None
-        self.delete_button.disabled = self.conf is None or len(self.conf[0]) == 0
-        self.set_r_button.disabled = self.conf is not None and self.conf[1] is not None
-        self.rm_r_button.disabled = self.conf is None or self.conf[1] is None
+        self.delete_button.disabled = self.conf[0] is None or len(self.conf[0]) == 0
+        self.set_r_button.disabled = self.conf[1] is not None and self.conf[1][0] is not None
+        self.rm_r_button.disabled = self.conf[1] is None or self.conf[1][0] is None
 
     async def update_message(self, interaction:discord.Interaction):
         self.update_btn()
@@ -99,6 +99,8 @@ class ConfMonitor(discord.ui.View):
                             msg = self.TEMPLATE[i+(len(self.TEMPLATE)//2)].format(chid=x.channel_id)
                         case 1:
                             msg = self.TEMPLATE[i+(len(self.TEMPLATE)//2)].format(step=x.steps,npc=x.npc,pvp=x.pvp,lvl=x.levels,days=x.days)
+                        case _:
+                            msg = ""
                     fmsg += msg + "\n"
                 emb.add_field(
                     name=self.TEMPLATE[i],
@@ -122,7 +124,7 @@ class ConfMonitor(discord.ui.View):
         await interaction.response.defer()
 
         await Database.delete_requirements(self.gid)
-        await interaction.followup.send(content="Requirements removed, if there were any.")
+        await interaction.followup.send(content="Requirements removed, if there were any.",ephemeral=True)
 
         await self.load_conf()
         await self.update_message(interaction)
@@ -133,24 +135,25 @@ class ConfMonitor(discord.ui.View):
         await interaction.response.send_modal(modal)
         await modal.wait()
         await Database.insert_requirements(self.gid,modal.days,modal.lvl,modal.npc,modal.pvp,modal.steps)
+        await interaction.followup.send(content="Requirements Updated.",ephemeral=True)
 
         await self.load_conf()
         await self.update_message(interaction)
         await modal.modal_interaction.edit_original_response(embed=await self.create_embed(),view=self)
 
 
-    @discord.ui.button(label="Exit", style=discord.ButtonStyle.red,emoji="🗑️",row=3)
+    @discord.ui.button(label="Exit", style=discord.ButtonStyle.red,row=3)
     async def cancel_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         await interaction.response.defer()
         await interaction.edit_original_response(embed=helpers.Embed(title="Operation cancelled"),view=None)
 
-    @discord.ui.button(label="Delete Message", style=discord.ButtonStyle.red,disabled=True,row=2)
+    @discord.ui.button(label="Delete Message", style=discord.ButtonStyle.red,disabled=True,emoji="🗑️",row=2)
     async def delete_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         await interaction.response.defer()
         await self.load_conf()
 
         await Database.delete_monitor_config(self.ch)
-        await interaction.followup.send(content="Message removed, if there were any.")
+        await interaction.followup.send(content="Message removed, if there were any.",ephemeral=True)
 
 
 
@@ -169,7 +172,7 @@ class ConfMonitor(discord.ui.View):
         self.ch = None
 
         if error:
-            await helpers.send(interaction,content="Already set")
+            await interaction.followup.send(content="Message already set, remove it before setting up a new one.")
             await message.delete()
         else:
             await interaction.followup.send(content="Set up complete.", ephemeral=True)
