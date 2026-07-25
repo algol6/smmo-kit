@@ -504,12 +504,13 @@ async def get_user(ctx:ApplicationContext|None=None,smmo_id:int|None=None,user:M
     if smmo_id is None:
         return None
     game_user = await SMMOApi.get_player_info(smmo_id)
+    if game_user:
+        return game_user
     if not game_user or not linked:
         logger.warning("Wrong SMMO ID")
         if ctx is not None:
             await send(ctx,"Wrong smmo id or user not linked")
         return None
-    return game_user
 
 
 def get_dominant_color(image_url):
