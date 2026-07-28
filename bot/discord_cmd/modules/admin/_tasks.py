@@ -116,7 +116,7 @@ class AdminTask(Cog):
                         "name": member.name,
                         "value": p,
                         "id": member.user_id,
-                        "extra": (":red_circle:" if p < req.pvp - int(req.pvp*0.2) else ":orange_circle:" if p < req.pvp else ":green_circle:") + " :crossed_swords:" if member.warrior else ""
+                        "extra": (":red_circle:" if p < req.pvp - int(req.pvp*0.2) else ":orange_circle:" if p < req.pvp else ":green_circle:") + (" :crossed_swords:" if member.warrior else "")
                     }
                 )
             s = member.steps - member_stats.steps
@@ -214,7 +214,7 @@ class AdminTask(Cog):
         data = await Database.select_all_monitors_config()
         for d in data:
             emb = await self.make_emb_monitor_system(d.guild_id)
-            if not emb:
+            if not emb or not emb.to_dict():
                 logger.warning("Could not make the embed for the monitor system %s", d.guild_id)
                 continue
             if not await helpers.get_channel_and_edit(self.client, d.channel_id, d.message_id, embed=emb):
