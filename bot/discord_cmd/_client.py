@@ -1,4 +1,7 @@
+from pydoc import text
+
 from discord import (
+    Guild,
     Intents,
     ActivityType,
     Activity,
@@ -9,6 +12,7 @@ from discord import (
     Forbidden
 )
 from os import getenv
+from discord.channel import TextChannel
 from pycord.multicog import Bot
 from bot.database import Database, TrialDatabase
 from bot.discord_cmd.helpers import helpers,command_utils,permissions
@@ -125,16 +129,21 @@ async def on_member_update(before,after):
             continue
 
 @client.event
-async def on_guild_join(guild):
-    channel = guild.system_channel
+async def on_guild_join(guild:Guild):
+    channel:TextChannel|None = guild.system_channel
 
     if not channel:
+        first = True
         for text_channel in guild.text_channels:
             if text_channel.permissions_for(guild.me).send_messages:
+                if first:
+                    first = False
+                    continue
                 channel = text_channel
                 break
 
     if channel:
+        logger.info("Bot joined guild: %s",channel.name)
         emb = helpers.Embed(
             title="Hello, I'm SMMO-Kit!",
             description="Thanks for adding me to your server!"
