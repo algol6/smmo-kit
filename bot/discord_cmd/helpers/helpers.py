@@ -392,7 +392,10 @@ async def get_channel_and_edit(client:Bot,channel_id:int,message_id:int=None,con
         if not message_id:
             message = await channel.send(content=content,embed=embed,view=view)
         else:
-            message = await channel.fetch_message(message_id)
+            if hasattr(channel, "get_partial_message"):
+                message = channel.get_partial_message(message_id)
+            else:
+                message = await channel.fetch_message(message_id)
             await message.edit(content=content,embed=embed,view=view)
         if delete_after is not None:
             await Database.insert_delmsg(message.id,channel.id,int(delete_after+datetime.now().timestamp()))
