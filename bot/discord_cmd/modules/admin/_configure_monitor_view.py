@@ -150,9 +150,19 @@ class ConfMonitor(discord.ui.View):
     @discord.ui.button(label="Delete Message", style=discord.ButtonStyle.red,disabled=True,emoji="🗑️",row=2)
     async def delete_button(self, button:discord.ui.Button, interaction:discord.Interaction):
         await interaction.response.defer()
+        if self.conf[0] is not None:
+            for c in self.conf[0]:
+                if c.channel_id == self.ch:
+                    try:
+                        channel = await self.client.get_or_fetch(discord.TextChannel,self.ch)
+                        if channel is not None:
+                            message = await channel.fetch_message(c.message_id)
+                            if message is not None:
+                                await message.delete()
+                    except:
+                        pass
+        await Database.delete_monitor_config(self.ch.id)
         await self.load_conf()
-
-        await Database.delete_monitor_config(self.ch)
         await interaction.followup.send(content="Message removed, if there were any.",ephemeral=True)
 
 
