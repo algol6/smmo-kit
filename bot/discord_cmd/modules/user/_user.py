@@ -37,7 +37,7 @@ class Users(Cog):
         game_user = await helpers.get_user(ctx, smmo_id, user)
         if game_user is None:
             return
-        
+
         temp_in = f"./temp/raw_{ctx.author.id}.gif"
         temp_out = f"./temp/res_{ctx.author.id}.gif"
 
@@ -53,13 +53,13 @@ class Users(Cog):
         file = File(temp_out, filename="avatar.gif")
         emb = helpers.Embed(title=f"{game_user.name}'s Avatar")
         emb.set_image(url="attachment://avatar.gif")
-        
+
         await helpers.send(ctx, file=file, embed=emb)
 
         for f in [temp_in, temp_out]:
             if os.path.exists(f):
                 os.remove(f)
-    
+
     @subcommand("user")
     @slash_command(description="Show the best user stats registered by the bot")
     @guild_only()
@@ -103,7 +103,7 @@ class Users(Cog):
             return await helpers.send(ctx,content="Wrong date format. use dd/mm/yyyy format")
 
         game_user = await helpers.get_user(ctx, smmo_id, user)
-        
+
         y: list[str] = []
         legen: list[str] = []
         if level:
@@ -156,7 +156,7 @@ class Users(Cog):
             xlabel="Date",
             label = legen
         )
-        date_formatter = DateFormatter('%d-%b-%Y') 
+        date_formatter = DateFormatter('%d-%b-%Y')
         if subplots:
             for ax in axes:
                 ax.yaxis.set_major_formatter(FuncFormatter(helpers.human_format))
@@ -175,7 +175,7 @@ class Users(Cog):
         )
         emb.set_image(url="attachment://graph.png")
         return await helpers.send(ctx,file=file,embed=emb)
-    
+
     @subcommand("user", independent=True)
     @slash_command(description="Get the average stats.")
     @guild_only()
@@ -197,7 +197,7 @@ class Users(Cog):
             avg_msg = TEMPLATE.format(lvl=avg.level,stp=avg.steps,npc=avg.npc_kills,pvp=avg.user_kills)
         if avgw and avgw.level:
             avgw_msg = TEMPLATE.format(lvl=avgw.level,stp=avgw.steps,npc=avgw.npc_kills,pvp=avgw.user_kills)
-        
+
         emb = helpers.Embed(
             title=f"[{game_user.id}] {game_user.name} Average Stats",
             url=f"https://simple-mmo.com/user/view/{game_user.id}",
@@ -217,7 +217,7 @@ class Users(Cog):
         )
         emb.set_footer(text="Data limited to that saved in the Database.")
         await helpers.send(ctx,embed=emb)
-        
+
     @subcommand("user", independent=True)
     @slash_command(description="Get the overall stats.")
     @guild_only()
@@ -504,6 +504,7 @@ class Users(Cog):
     @command_utils.took_too_long()
     async def stats(self,ctx:ApplicationContext,user:Member=None,smmo_id:int=None,timeframe:str="Daily"):
         date = helpers.get_date_game(timeframe)
+        print(date)
         to_date = helpers.get_current_date_game()
         current_stats = await helpers.get_user(ctx, smmo_id, user)
         if current_stats is None:
@@ -522,7 +523,7 @@ class Users(Cog):
             return await helpers.send(ctx,"No data, may take up to 24h to load")
         quests: bool = stats.quests_performed != -1 and current_stats.quests_performed != -1
         bounties: bool = stats.bounties_completed != -1 and current_stats.bounties_completed != -1
-       
+
         emb = helpers.Embed(
             title=f"[{id}] {name}",
             url=f"https://simple-mmo.com/user/view/{id}",
