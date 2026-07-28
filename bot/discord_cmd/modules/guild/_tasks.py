@@ -30,7 +30,8 @@ class GuildTask(Cog):
         logger.info("Started saving guild stats.")
         season_id:int = await Database.select_last_season_id()
         id = set()
-        guilds: list[int] = await Database.select_all_server_guild()
+        guilds = await Database.select_all_server_guild()
+        date = datetime.now(tz=timezone.utc)
         if end_season:
             date = helpers.get_current_date_game() + timedelta(days=1)
             season_id -=1
