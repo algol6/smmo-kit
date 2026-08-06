@@ -415,7 +415,7 @@ async def get_channel_and_edit(client:Bot,channel_id:int,message_id:int=None,con
         logger.exception("InvalidData")
         return True
 
-async def send(ctx,content:str="",embed:Embed=MISSING,view=MISSING,file=MISSING,delete_after=None):
+async def send(ctx,content:str="",embed:Embed=MISSING,view=MISSING,file=MISSING,delete_after:int|None=None):
     try:
         if isinstance(ctx,ApplicationContext):
             msg = await ctx.followup.send(content=content,embed=embed,view=view,file=file)

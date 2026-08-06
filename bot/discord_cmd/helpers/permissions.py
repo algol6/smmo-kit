@@ -6,7 +6,7 @@ from bot.api import SMMOApi
 from bot.database import Database
 
 async def is_admin_or_staff(ctx: ApplicationContext) -> bool:
-    if isinstance(ctx.author, Member): 
+    if isinstance(ctx.author, Member):
         if ctx.author.guild_permissions.administrator:
             return True,None
         elif ctx.author.guild_permissions.manage_channels:
@@ -67,7 +67,6 @@ def require_owner():
                         ephemeral=True
                     )
                     return
-                
             return await func(*args, **kwargs)
         return wrapped
     return wrapper
@@ -83,7 +82,7 @@ def require_linked_account():
         async def wrapped(*args, **kwargs):
             if len(args) >= 2 and isinstance(args[1], ApplicationContext):
                 ctx: ApplicationContext = args[1]
-                is_linked,discord_user=await is_linked_account(ctx)
+                is_linked,discord_user = await is_linked_account(ctx)
                 if not is_linked:
                     await ctx.respond(
                         content="You need to be linked. use `/user verify` to link your account.",
@@ -118,5 +117,3 @@ def require_linked_server():
             return await func(*args, **kwargs)
         return wrapped
     return wrapper
-
-
