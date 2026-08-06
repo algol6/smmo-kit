@@ -117,9 +117,9 @@ class Utility(commands.Cog):
     @command_utils.auto_defer(False)
     @command_utils.statistics("/bacalc")
     @command_utils.took_too_long()
-    async def bacalc(self, ctx:ApplicationContext, rank:str, target_level:int = None, boost_percentage:int = 0, starting_level:int=None, energy_point:int=None,npc:int=0) -> None:
-        if target_level is None and npc is None:
-            return await helpers.send(ctx,content="Insert a target level (target_level) or the amount of npc to kill (npc)")
+    async def bacalc(self, ctx:ApplicationContext, rank:str, target_level:int = 0, boost_percentage:int = 0, starting_level:int=0, energy_point:int=0,npc:int=0,gold:int=0) -> None:
+        if not any((target_level,npc,gold)):
+            return await helpers.send(ctx,content="Insert a target_level, npc or gold amount.",delete_after=60)
         MOE:int = 125
         MOE_PLEB:int = 180
         RANK_DATA = {
@@ -151,6 +151,7 @@ class Utility(commands.Cog):
             return await helpers.send(ctx,"The level that you want reach has to be higher than your actual level. -_-",delete_after=60)
 
         npc_to_kill:int = 0
+        final_level = 0
         final_xp_mult = BASE_XP_MULT * TIER_MULT * (1 + (boost_percentage / 100))
 
         level = player.level
@@ -160,17 +161,21 @@ class Utility(commands.Cog):
         level_progress = (player.exp / xp_for_current_level) if xp_for_current_level != 0 else 0
         k_x_l = final_xp_mult / 50.0
 
-        if npc == 0 and target_level is not None:
+        if target_level:
             lvl_needed = (target_level - level) - level_progress
             lvl_needed = max(0, lvl_needed)
             npc_to_kill = ceil(lvl_needed / k_x_l)
             final_level = target_level
-        else:
+        elif npc:
             npc_to_kill = npc
             total_progress = level_progress + (npc_to_kill * k_x_l)
             lvl_gained = floor(total_progress)
             final_level = level + lvl_gained
-
+        elif gold:
+            npc_to_kill = floor(gold / NPC_COST)
+            total_progress = level_progress + (npc_to_kill * k_x_l)
+            lvl_gained = floor(total_progress)
+            final_level = level + lvl_gained
 
         money_needed = npc_to_kill * NPC_COST
         lvl_gained = final_level - level
@@ -194,7 +199,7 @@ class Utility(commands.Cog):
             f"**Regen time w/ {MOE_PLEB}** :mushroom:: {helpers.formattime((max(0,npc_to_kill-moes_p))*5)} (Moe cost: {(moes_p)*30000:,} :coin: | {moes_p:,} :mushroom:)\n"
         )
         msg2:str = ""
-        if energy_point is not None:
+        if energy_point:
             STR_TEMPLATE = ("With {ep} Ep, it's worth to refill {refill_ep} EP instead\n",
                             "With {ep} Ep, if There is a sale it's worth to refill {refill_ep} EP instead\n",
                             "With {ep} Ep, if There is a double sale it's worth to refill {refill_ep} EP instead\n")
