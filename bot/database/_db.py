@@ -1499,21 +1499,39 @@ class Database(BaseDatabase):
 
     ## best
     @staticmethod
-    async def select_all_best(category: str) -> Generator[model.BestStats]:
-        data = await Database._select(
-            """SELECT *
-            FROM best
-            WHERE category=?
-            ORDER BY
-               CASE
-                   WHEN ?='NPC' THEN npc
-                   WHEN ?='PVP' THEN pvp
-                   WHEN ?='STEPS' THEN steps
-                   WHEN ?='LEVEL' THEN levels
-               END
-            DESC""",
-            (category, category, category, category, category),
-        )
+    async def select_all_best(category: str, ids:tuple=()) -> Generator[model.BestStats]:
+        if len(ids):
+            placeholders = ','.join(['?'] * len(ids))
+
+            data = await Database._select(
+                f"""SELECT *
+                FROM best
+                WHERE category=? AND smmo_id IN ({placeholders})
+                ORDER BY
+                CASE
+                    WHEN ?='NPC' THEN npc
+                    WHEN ?='PVP' THEN pvp
+                    WHEN ?='STEPS' THEN steps
+                    WHEN ?='LEVEL' THEN levels
+                END
+                DESC""",
+                (category,*ids,category, category, category, category),
+            )
+        else:
+            data = await Database._select(
+                """SELECT *
+                FROM best
+                WHERE category=?
+                ORDER BY
+                CASE
+                    WHEN ?='NPC' THEN npc
+                    WHEN ?='PVP' THEN pvp
+                    WHEN ?='STEPS' THEN steps
+                    WHEN ?='LEVEL' THEN levels
+                END
+                DESC""",
+                (category, category, category, category, category),
+            )
         if data is not None and len(data) != 0:
             return (model.BestStats(*v) for v in data)
         return ()
@@ -3535,13 +3553,14 @@ class Database(BaseDatabase):
         return ()
 
     @staticmethod
-    async def insert_monthly_reward(role_id: int, channel_id: int) -> bool:
+    async def insert_monthly_reward(role_id: int, channel_id: int,server_id:int) -> bool:
         try:
             await Database._insert(
-                "INSERT INTO monthly_reward VALUES(?,?)",
+                "INSERT INTO monthly_reward VALUES(?,?,?)",
                 (
                     role_id,
                     channel_id,
+                    server_id,
                 ),
             )
             return True
