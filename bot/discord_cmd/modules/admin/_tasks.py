@@ -1,6 +1,6 @@
 from asyncio import sleep
 from datetime import datetime, time, timedelta, timezone
-from random import choice
+import sys
 
 from discord import Bot
 from discord.errors import Forbidden, HTTPException, NotFound
@@ -15,6 +15,7 @@ from bot.discord_cmd.helpers.logger import logger
 from bot.database.model import CompleteLb, GainsLeaderboard
 
 
+
 class AdminTask(Cog):
     def __init__(self, client) -> None:
         self.client = client
@@ -23,7 +24,6 @@ class AdminTask(Cog):
         #self.update_gains_lb.start()
         #self.create_new_daily_leaderboard.start()
         #self.update_leaderboards.start()
-        self.activity_check.start()
         self.cleanup_msg.start()
         self.update_season.start()
         self.update_monitor_system.start()
@@ -701,8 +701,9 @@ class AdminTask(Cog):
                 content=f"<@&{ping.role_id}> time to get monthly reward!\nGo to Town > Mahols Hut > Monthly Reward, to reedem it.",
             )
 
+    @staticmethod
     @loop(minutes=30)
-    async def activity_check(self):
+    async def activity_check():
         status_phrases = [
             "Bot still running... Maybe...",
             "Still alive and kicking.",
@@ -733,9 +734,10 @@ class AdminTask(Cog):
             "Still standing, defying all odds.",
         ]
 
-        print(
-            f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {choice(status_phrases)}"
+        sys.stdout.write(
+            f"\r[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {status_phrases[AdminTask.activity_check.current_loop % len(status_phrases)]}\033[K"
         )
+        sys.stdout.flush()
 
 
 def setup(client: Bot):

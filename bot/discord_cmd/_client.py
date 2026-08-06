@@ -22,6 +22,8 @@ from bot.api._api import ApiError
 from requests import HTTPError
 import re
 
+from bot.discord_cmd.modules.admin._tasks import AdminTask
+
 intent = Intents.default()
 intent.members = True
 client = Bot(intents=intent, activity=Activity(name="SimpleMMO", type=ActivityType.watching))
@@ -58,16 +60,17 @@ async def on_application_command_error(ctx: ApplicationContext, error: DiscordEx
     logger.error("COMMAND [/%s] from %s:\n%s",ctx.command.qualified_name,guild,error)
     if isinstance(error.original, errors.NotFound):
         logger.warning("Error 'discord.errors.NotFound'")
-        return await helpers.send(ctx,content="Error with discord, Try again.")
+        return await helpers.send(ctx,content="Error with discord, Try again.",delete_after=120)
     elif isinstance(error.original,ApiError):
-        return await helpers.send(ctx,content="Error caused by: Api Limit Hit :/")
+        return await helpers.send(ctx,content="Error caused by: Api Limit Hit :/",delete_after=120)
     elif isinstance(error.original,HTTPError):
         return await helpers.send(ctx,content=f"Error caused by: {error}")
-    await helpers.send(ctx,"Unexpected error. Try again later.",delete_after=300)
+    print(error)
+    await helpers.send(ctx,"Unexpected error. Try again later.",delete_after=120)
 
 @client.event
 async def on_ready():
-    print("BOT READY")
+    print("\nBOT READY")
     from bot.discord_cmd.modules.event._registration_view import RegistrationView
     from bot.discord_cmd.modules.trial._entry_view import EntryView
     client.add_view(RegistrationView())
@@ -80,6 +83,8 @@ async def on_ready():
     except errors.HTTPException:
         pass
     print("Loading custom commands DONE.")
+    if not AdminTask.activity_check.is_running():
+            AdminTask.activity_check.start()
     return
     print("Loading Tests")
     main_group = SlashCommandGroup(
@@ -167,16 +172,18 @@ async def on_member_join(member):
     channel = None
     if conf.msg != "":
         try:
-            channel = await client.get_channel(conf.channel)
-            msg = await channel.send(content=conf.msg,delete_after=500)
+            channel = client.get_channel(conf.channel)
+            if isinstance(channel, TextChannel):
+                msg = await channel.send(content=conf.msg,delete_after=500)
         except:
             pass
     player = await helpers.get_user(user=member)
     if player is None:
         try:
             if channel is None:
-                channel = await client.get_channel(conf.channel)
-            msg = await channel.send(content="> To automatically get roles link with the bot using '/user verify' and following the instructions or ask to the moderators.",delete_after=120)
+                channel = client.get_channel(conf.channel)
+            if isinstance(channel, TextChannel):
+                msg = await channel.send(content="> To automatically get roles link with the bot using '/user verify' and following the instructions or ask to the moderators.",delete_after=120)
         except:
             pass
         return
