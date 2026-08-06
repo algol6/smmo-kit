@@ -67,14 +67,22 @@ class Users(Cog):
     @permissions.require_linked_account()
     @command_utils.statistics("/user lb")
     @command_utils.took_too_long()
-    async def lb(self,ctx:ApplicationContext):
+    async def lb(self,ctx:ApplicationContext,guild_only:bool=False):
         user = ctx.discord_user
+        if guild_only:
+            ids = ()
+            gu = await helpers.get_user(smmo_id=user.smmo_id)
+            if gu and gu.guild and gu.guild.id:
+                ids = tuple(x.user_id for x in await SMMOApi.get_guild_members(gu.guild.id))
+        else:
+            ids = ()
         view = LeaderboardView()
+        view.guild_only = guild_only
         view.data = [
-            tuple(await Database.select_all_best("STEPS")),
-            tuple(await Database.select_all_best("NPC")),
-            tuple(await Database.select_all_best("PVP")),
-            tuple(await Database.select_all_best("LEVEL")),
+            tuple(await Database.select_all_best("STEPS",ids)),
+            tuple(await Database.select_all_best("NPC",ids)),
+            tuple(await Database.select_all_best("PVP",ids)),
+            tuple(await Database.select_all_best("LEVEL",ids)),
         ]
         view.user_id = user.smmo_id
         await view.send(ctx)
@@ -190,8 +198,8 @@ class Users(Cog):
         avg = await Database.select_avg_stats(game_user.id)
         avgw = await Database.select_avg_stats_week(game_user.id)
         day_count = await Database.select_counter_user_stats(game_user.id)
-        avg_msg = f"Could not retrive data."
-        avgw_msg = f"Could not retrive data."
+        avg_msg = "Could not retrive data."
+        avgw_msg = "Could not retrive data."
         TEMPLATE:str = "Levels: {lvl:,.0f}\nSteps: {stp:,.0f}\nNPC Kills: {npc:,.0f}\nPVP Kills: {pvp:,.0f}"
         if avg and avg.level:
             avg_msg = TEMPLATE.format(lvl=avg.level,stp=avg.steps,npc=avg.npc_kills,pvp=avg.user_kills)
@@ -504,7 +512,6 @@ class Users(Cog):
     @command_utils.took_too_long()
     async def stats(self,ctx:ApplicationContext,user:Member=None,smmo_id:int=None,timeframe:str="Daily"):
         date = helpers.get_date_game(timeframe)
-        print(date)
         to_date = helpers.get_current_date_game()
         current_stats = await helpers.get_user(ctx, smmo_id, user)
         if current_stats is None:

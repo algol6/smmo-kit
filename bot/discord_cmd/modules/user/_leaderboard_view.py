@@ -59,6 +59,8 @@ class LeaderboardView(discord.ui.View):
                         your_value = usr.pvp
                     elif self.type == 3:
                         your_value = usr.levels
+                    if your_value is None:
+                        your_value = -1
             if i>10:
                 continue
             if self.type == 0:
@@ -72,11 +74,14 @@ class LeaderboardView(discord.ui.View):
             msgs.append(self.TEMPLATE.format(pos=i,name=usr.name,id=usr.smmo_id,value=value,sdate=int(usr.date-86400)))
             if position<=10 and position == i:
                 msgs[-1] = msgs[-1] + " :arrow_left:"
+
         return position,your_value,msgs
 
     async def create_embed(self):
         your_pos,your_val,msg = self.generate_msg()
         desc = f"You are placed #{your_pos:,}/{len(self.data[self.type]):,}\nYour stat: {your_val:,}" if your_pos > 10 else ""
+        if self.guild_only:
+            desc = "Showing only the guildmates\n" + desc
         emb = helpers.Embed(title=f"{self.TITLE[self.type]} Leaderboard",description=desc)
         emb.add_field(name="",
                       value="\n".join(msg[:5]),
@@ -85,7 +90,7 @@ class LeaderboardView(discord.ui.View):
                       value="\n".join(msg[5:]),
                       inline=False)
         if your_pos != 0:
-            emb.set_footer(text="Data limited to the database")
+            emb.set_footer(text="Data limited to the users in the database")
         return emb
 
     @discord.ui.button(label="Steps", emoji="🥾", style=discord.ButtonStyle.primary)
