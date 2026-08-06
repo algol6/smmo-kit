@@ -272,7 +272,7 @@ class Admin(Cog):
         except Forbidden:
             return await helpers.send(ctx,content="Bot doesn't have the perms to see/write the channel.")
 
-        if not await Database.insert_monthly_reward(role.id, channel.id):
+        if not await Database.insert_monthly_reward(role.id, channel.id, ctx.guild_id):
             return await helpers.send(ctx,content="Ping already setted.")
         await helpers.send(ctx,content="Ping setted.")
 
