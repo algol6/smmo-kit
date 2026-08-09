@@ -1,27 +1,26 @@
-from pydoc import text
+import re
+from os import getenv
 
 from discord import (
-    Guild,
-    Intents,
-    ActivityType,
     Activity,
+    ActivityType,
     ApplicationContext,
     DiscordException,
+    Forbidden,
+    Guild,
+    Intents,
+    SlashCommand,
+    SlashCommandGroup,
     errors,
-    SlashCommandGroup, SlashCommand,
-    Forbidden
 )
-from os import getenv
 from discord.channel import TextChannel
 from pycord.multicog import Bot
-from bot.database import Database, TrialDatabase
-from bot.discord_cmd.helpers import helpers,command_utils,permissions
-from bot.discord_cmd.helpers.logger import logger
-from bot.api._api import ApiError
-
 from requests import HTTPError
-import re
 
+from bot.api._api import ApiError
+from bot.database import Database, TrialDatabase
+from bot.discord_cmd.helpers import command_utils, helpers, permissions
+from bot.discord_cmd.helpers.logger import logger
 from bot.discord_cmd.modules.admin._tasks import AdminTask
 
 intent = Intents.default()
