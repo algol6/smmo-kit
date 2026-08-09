@@ -1,12 +1,12 @@
 from dataclasses import dataclass, field
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class ShortGuildInfo:
     id: int = field(default_factory=None)
     name: str = field(default_factory=None)
 
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class GuildMemberInfo:
     user_id: int = field(default_factory=None)
     position: str = field(default_factory=None)
@@ -23,7 +23,7 @@ class GuildMemberInfo:
     last_activity: int = field(default_factory=None)
 
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class GuildInfo:
     id: int
     name: str
@@ -38,12 +38,12 @@ class GuildInfo:
     eligible_for_guild_war: bool
     members: list[GuildMemberInfo] = field(default_factory=list)
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class TaxContribution:
     guild_bank: int
     sanctuary: int
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class GuildMemberContribution:
     user_id: int
     gold_deposited: int

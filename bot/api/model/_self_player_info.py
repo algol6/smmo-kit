@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from ._player_info import ShortGuildInfo
 from ._location import Location
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class SelfPlayerInfo:
     id: int
     name: str

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class Market:
     id: int
     title: str
@@ -13,11 +13,11 @@ class Market:
     author_name: str
     time: int
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class MarketNotice:
     channel_id: int
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class MarketNoticeItem:
     item_id: int
     message_id: int

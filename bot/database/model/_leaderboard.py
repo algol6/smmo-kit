@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class Leaderboard:
     channel_id: int
     message_id: int

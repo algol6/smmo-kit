@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class WorldbossNotification:
         channel_id: int
         role_id: int
@@ -10,13 +10,13 @@ class WorldbossNotification:
         boss_id: int
         server_id: int
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class WorldbossMessage:
         channel_id: int
         boss_id: int
         server_id: int
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class WorldBoss:
     id: int
     name: str

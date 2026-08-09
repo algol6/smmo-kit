@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class Event:
     id: int
     start_year: int
@@ -25,7 +25,7 @@ class Event:
     host: str
     igguild_id: int
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class EventStats:
     event_id: int
     smmo_id: int
@@ -35,7 +35,7 @@ class EventStats:
     time: int
     stats: int
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class EventTeam:
     team: int
     smmo_id: int
@@ -43,13 +43,13 @@ class EventTeam:
     guild_id: int
 
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class EventLeaderboard:
     channel_id: str
     message_id: str
     event_id: int
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class EventPartecipants:
     smmo_id: int
     name: str

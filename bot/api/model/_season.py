@@ -1,19 +1,19 @@
 from dataclasses import dataclass
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class GuildLeaderboard:
     guild_id: int
     name: str
     background: str
     icon: str
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class GuildSeasonLeaderboard:
     guild: GuildLeaderboard
     position: int
     experience: int
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class Season:
     id: int
     name: str

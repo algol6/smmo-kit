@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class JoinConf:
     guild_id: int
     msg: str
@@ -8,7 +8,7 @@ class JoinConf:
     vroles: str
     channel: int
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class GuildStats:
     year: int
     month: int
@@ -19,7 +19,7 @@ class GuildStats:
     experience: int
     season: int
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class Requirements:
     guild_id: int
     days: int
@@ -28,17 +28,17 @@ class Requirements:
     pvp: int
     steps: int
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class Staff:
     guild_id: int
     role_id: int
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class Server:
     guild_id: int
     server_id: int
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class Rewards:
     guild_id: int
     gold: int
@@ -47,12 +47,12 @@ class Rewards:
     month: int
     day: int
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class SafeUser:
     smmo_id: int
     guild_id: int
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class GainsLeaderboard:
     channel_id: int
     message_id: int
@@ -60,20 +60,20 @@ class GainsLeaderboard:
     timeframe: str
     timestamp: int
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class Raid:
     channel_id: int
     time: int
     duration: int
     role_id: int
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class Task:
     channel_id: int
     guild_id: int
     role_id: int
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class Season:
     id: int
     name: str
@@ -81,7 +81,7 @@ class Season:
     ends_at: str
 
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class CompleteLb:
     channel_id: int
     message_id: int
@@ -91,7 +91,7 @@ class CompleteLb:
     timeframe: str
     server_id: int
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class MonitorSystem:
     server_id: int
     channel_id: int

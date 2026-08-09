@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class Orphanage:
     channel_id: int
     role_id: int

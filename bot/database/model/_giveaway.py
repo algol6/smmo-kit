@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class Giveaway:
     id: int
     name: str
@@ -15,4 +15,3 @@ class GiveawayParticipant:
     discord_id: int
     smmo_id: int
     giveaway_id: int
-    

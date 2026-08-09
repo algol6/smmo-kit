@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class DiamondMarketSeller:
     id: int
     name: str
 
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class DiamondMarketEntry:
     seller: DiamondMarketSeller
     diamond_amount_at_start: int

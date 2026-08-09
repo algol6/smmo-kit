@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class UserStat:
     smmo_id: int
     year: int
@@ -15,14 +15,14 @@ class UserStat:
     bounties_completed: int
     reputation: int
     chests_opened: int
-    
-@dataclass
+
+@dataclass(slots=True, frozen=True)
 class DeleteMessage:
         msg_id: int
         chn_id: int
         time: int
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class Statistics:
         id: str
         time_used: int

@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class ItemMarketData:
     low: int
     high: int
 
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class ItemInfo:
     id: int
     name: str

@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class OrphanageTier:
     key: str
     name: str
 
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class OrphanageEntry:
     tier: OrphanageTier
     effects: list[str]

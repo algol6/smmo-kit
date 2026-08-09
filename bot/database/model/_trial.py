@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class Trial:
   server_id: int
   enabled: bool
@@ -10,20 +10,20 @@ class Trial:
   guild_id: int
   name: str
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class TrialEntry:
   message_id: int
   channel_id: int
   trial_id: int
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class TrialCategory:
   id: int
   trial_id: int
   name: str
   allow_parallel: bool
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class TrialTask:
   id: int
   trial_category_id: int
@@ -34,14 +34,14 @@ class TrialTask:
   bonus_time: int
   bonus: str
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class TrialTaskRequisite:
   id: int
   trial_task_id: int
   formula: str
   goal: int
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class TrialRecord:
   id: int
   trial_task_id: int
