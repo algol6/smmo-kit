@@ -18,7 +18,7 @@ class ContributionModal(discord.ui.Modal):
         if user is None:
             return await interaction.respond("API Key not valid.")
         data = [[],[],[],[],[],[],[],[]]
-        print("Do not turn off, contribution ongoing")
+        print("\nDo not turn off, contribution ongoing")
         for member in await SMMOApi.get_guild_members(user.guild["id"]):
             contr = await SMMOApi.get_guild_member_contribution(user.guild["id"], member.user_id, self.api_key)
             if contr is None:
