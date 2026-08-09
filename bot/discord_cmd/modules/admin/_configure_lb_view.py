@@ -166,7 +166,7 @@ class ConfigLB(discord.ui.View):
         selected_value = self.category_select.values[0]
         if selected_value is None:
             return
-        for option in self.select3_callback.options:
+        for option in self.category_select.options:
             option.default = option.value == selected_value
         self.cat = selected_value
         await self.update_message(interaction)
@@ -194,7 +194,7 @@ class ConfigLB(discord.ui.View):
             case "Members General":
                 error = not await Database.insert_lb(channel.id, message.id, await Database.select_server(interaction.guild_id),interaction.guild.id,self.tf,timestamp)
             case "Members Complete":
-                error = not await Database.insert_cmp_lb(channel.id,message.id,await Database.select_server(interaction.guild_id),timestamp,self.cat,self.tf)
+                error = not await Database.insert_cmp_lb(channel.id,message.id,await Database.select_server(interaction.guild_id),timestamp,self.cat,self.tf,interaction.guild.id)
 
         self.tf = None
         self.type = None
