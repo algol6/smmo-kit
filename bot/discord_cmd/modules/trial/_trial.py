@@ -24,35 +24,35 @@ class Trial(Cog):
     async def generate_trial_tree(client,server_settings:dict):
         if server_settings is None:
             return
-            
+
         for custom_name, guilds_id in server_settings.items():
             main_group = SlashCommandGroup(
                 name=custom_name,
                 description=f"Main commands for {custom_name}",
                 guild_ids=guilds_id
             )
-            
+
             main_group.add_command(SlashCommand(
-                func=Trial.start, 
-                name="start", 
+                func=Trial.start,
+                name="start",
                 description="Select and start a task",
                 parent=main_group
             ))
             main_group.add_command(SlashCommand(
-                func=Trial.cancel, 
-                name="cancel", 
+                func=Trial.cancel,
+                name="cancel",
                 description="Cancel current task",
                 parent=main_group
             ))
             main_group.add_command(SlashCommand(
-                func=Trial.status, 
-                name="status", 
+                func=Trial.status,
+                name="status",
                 description="Get info about your current task",
                 parent=main_group
             ))
             main_group.add_command(SlashCommand(
-                func=Trial.info, 
-                name="info", 
+                func=Trial.info,
+                name="info",
                 description=f"Show info about the {custom_name} system",
                 parent=main_group
             ))
@@ -62,18 +62,18 @@ class Trial(Cog):
                 description=f"Settings for {custom_name}"
             )
             admin_subgroup.add_command(SlashCommand(
-                func=Trial.toggle, 
-                name="toggle", 
+                func=Trial.toggle,
+                name="toggle",
                 description=f"Enable/Disable the {custom_name}",
                 parent=admin_subgroup
             ))
             admin_subgroup.add_command(SlashCommand(
-                func=Trial.configure, 
-                name="configure", 
+                func=Trial.configure,
+                name="configure",
                 description=f"Add a new category to {custom_name}",
                 parent=admin_subgroup
             ))
-            
+
             # TODO: 1CHECK IF POINT OF A TRIAL ARE ENABLED IF YES ADD admin set_points
 
             client.add_application_command(main_group)
@@ -102,7 +102,7 @@ class Trial(Cog):
         view.client = self.client
         view.generate_commands = self.generate_trial_tree
         await view.send(ctx)
-        
+
     @subcommand("admin")
     @slash_command(description="This will delete the quest system on this server")
     @guild_only()
@@ -156,7 +156,7 @@ class Trial(Cog):
         else:
             for cat in trial_mng.categories.values():
                 options_categories.append(SelectOption(label=cat.name.title(),value=str(cat.id)))
-   
+
 
         view = AcceptTaskView(options_categories)
         view.trial_mng:TrialManager = trial_mng
@@ -180,7 +180,7 @@ class Trial(Cog):
         records.update({x.id:x for x in (await trial_mgr.fetch_user_last_records(ig_user.id,True)).values()})
         emb = await generate_status_emb(records,ig_user,helpers.make_title(trial_mgr.trial.name),True)
         await helpers.send(ctx,embed=emb)
-        
+
 
     @permissions.require_linked_server()
     @permissions.require_linked_account()
@@ -235,7 +235,7 @@ class Trial(Cog):
         # LEVEL REQ can be done only if alone. No LVL+STEPS, only "LVL"
         trial_mng = TrialManager(ctx.guild_id,ctx.trial)
         await trial_mng.fetch_requisites()
-        
+
         view = ConfigureView()
         view.tm = trial_mng
         await view.send(ctx)
@@ -262,7 +262,7 @@ class Trial(Cog):
     async def set_points(ctx:ApplicationContext) -> None:
         await helpers.send(ctx,"WIP")
 
-    
+
 def setup(client:Bot):
     client.add_cog(Trial(client))
     client.add_cog(TrialTask(client))
