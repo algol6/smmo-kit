@@ -1137,10 +1137,11 @@ class Database(BaseDatabase):
         timestamp: int,
         category: str,
         timeframe: str,
+        server_id: int
     ) -> bool:
         try:
             await Database._insert(
-                "INSERT INTO complete_lb VALUES(?,?,?,?,?,?)",
+                "INSERT INTO complete_lb VALUES(?,?,?,?,?,?,?)",
                 (
                     channel_id,
                     message_id,
@@ -1148,6 +1149,7 @@ class Database(BaseDatabase):
                     timestamp,
                     category,
                     timeframe,
+                    server_id,
                 ),
             )
             return True
